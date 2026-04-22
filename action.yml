@@ -1,99 +1,175 @@
-name: "CodeQL: Finish"
-description: "Finalize CodeQL database"
-author: "GitHub"
+name: 'CodeQL: Init'
+description: 'Set up CodeQL'
+author: 'GitHub'
 inputs:
-  check_name:
-    description: The name of the check run to add text to.
-    required: false
-  output:
-    description: The path of the directory in which to save the SARIF results from the CodeQL CLI.
-    required: false
-    default: "../results"
-  upload:
+  tools:
     description: >-
-      Upload the SARIF file to Code Scanning.
-      Defaults to 'always' which uploads the SARIF file to Code Scanning for successful and failed runs.
-      'failure-only' only uploads debugging information to Code Scanning if the workflow run fails, for users post-processing the SARIF file before uploading it to Code Scanning.
-      'never' avoids uploading the SARIF file to Code Scanning, even if the code scanning run fails. This is not recommended for external users since it complicates debugging.
+      By default, the Action will use the recommended version of the CodeQL
+      Bundle to analyze your project. You can override this choice using this
+      input. One of:
+
+      - A local path to a CodeQL Bundle tarball, or
+      - The URL of a CodeQL Bundle tarball GitHub release asset, or
+      - A special value `linked` which uses the version of the CodeQL tools
+        that the Action has been bundled with.
+      - A special value `nightly` which uses the latest nightly version of the
+        CodeQL tools. Note that this is unstable and not recommended for
+        production use.
+
+      If not specified, the Action will check in several places until it finds
+      the CodeQL tools.
     required: false
-    # If changing this, make sure to update workflow.ts accordingly.
-    default: "always"
-  cleanup-level:
+  languages:
     description: >-
-      DEPRECATED. This option is ignored since, for performance reasons, the CodeQL Action automatically
-      manages cleanup of intermediate results.
+      A comma-separated list of CodeQL languages to analyze.
+
+      Due to the performance benefit of parallelizing builds, we recommend specifying languages to
+      analyze using a matrix and providing `\$\{{ matrix.language }}` as this input.
+
+      For more information, see
+      https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/customizing-your-advanced-setup-for-code-scanning#changing-the-languages-that-are-analyzed.
+    required: false
+  build-mode:
+    description: >-
+      The build mode that will be used to analyze the language. This input is only available when
+      analyzing a single CodeQL language per job, for example using a matrix.
+
+      Available build modes will differ based on the language being analyzed. One of:
+
+      - `none`:      The database will be created without building the source code.
+                     Available for all interpreted languages and some compiled languages.
+      - `autobuild`: The database will be created by attempting to automatically build the source
+                     code. Available for all compiled languages.
+      - `manual`:   The database will be created by building the source code using a manually
+                     specified build command. To use this build mode, specify manual build steps in
+                     your workflow between the `init` and `analyze` steps. Available for all
+                     compiled languages.
+    required: false
+  analysis-kinds:
+    description: >-
+      [Internal] A comma-separated list of analysis kinds to enable. This input is intended for
+      internal-use only at this time and the behaviour is subject to changes. Some features may
+      not be available depending on which analysis kinds are enabled.
+
+      Available options are:
+
+      - `code-scanning`: The default, security-focused analysis.
+      - `code-quality`: Analysis focused on code quality. This must be enabled in conjunction
+                        with `code-scanning`.
+    default: 'code-scanning'
+    required: true
+  token:
+    description: GitHub token to use for authenticating with this instance of GitHub. To download custom packs from multiple registries, use the registries input.
+    default: ${{ github.token }}
+    required: false
+  registries:
+    description: |
+      Use this input only when you need to download CodeQL packages from another instance of GitHub. If you only need to download packages from this GitHub instance, use the token input instead.
+
+      A YAML string that defines the list of GitHub container registries to use for downloading packs. The string is in the following form (the | is required on the first line):
+
+      registries: |
+          - url: https://containers.GHEHOSTNAME1/v2/
+            packages:
+              - my-company/*
+              - my-company2/*
+            token: \$\{{ secrets.GHEHOSTNAME1_TOKEN }}
+
+          - url: https://ghcr.io/v2/
+            packages: */*
+            token: \$\{{ secrets.GHCR_TOKEN }}
+
+      The `url` property contains the URL to the container registry you want to connect to.
+
+      The `packages` property contains a single glob string or a list of glob strings, specifying which packages should be retrieved from this particular container registry. Order is important. Earlier entries will match before later entries.
+
+      The `token` property contains a connection token for this registry.    required: false
+  matrix:
+    default: ${{ toJson(matrix) }}
+    required: false
+  config-file:
+    description: Path of the config file to use
+    required: false
+  db-location:
+    description: Path where CodeQL databases should be created. If not specified, a temporary directory will be used.
+    required: false
+  config:
+    description: Configuration passed as a YAML string in the same format as the config-file input. This takes precedence over the config-file input.
+    required: false
+  queries:
+    description: Comma-separated list of additional queries to run. By default, this overrides the same setting in a configuration file; prefix with "+" to use both sets of queries.
+    required: false
+  quality-queries:
+    description: '[Internal] DEPRECATED. Comma-separated list of code quality queries to run.'
+    required: false
+  packs:
+    description: >-
+      Comma-separated list of packs to run. Reference a pack in the format `scope/name[@version]`. If `version` is not
+      specified, then the latest version of the pack is used. By default, this overrides the same setting in a
+      configuration file; prefix with "+" to use both sets of packs.
+
+      This input is only available in single-language analyses. To use packs in multi-language
+      analyses, you must specify packs in the codeql-config.yml file.
+    required: false
+  external-repository-token:
+    description: A token for fetching external config files and queries if they reside in a private repository in the same GitHub instance that is running this action.
+    required: false
+  setup-python-dependencies:
+    description: DEPRECATED. This option is ignored since CodeQL Action no longer installs Python dependencies as of versions 3.25.0 and 2.25.0.
+    required: false
+  source-root:
+    description: Path of the root source code directory, relative to $GITHUB_WORKSPACE.
     required: false
   ram:
     description: >-
-      The amount of memory in MB that can be used by CodeQL for database finalization and query execution.
-      By default, this action will use the same amount of memory as previously set in the "init" action.
-      If the "init" action also does not have an explicit "ram" input, this action will use most of the
-      memory available in the system (which for GitHub-hosted runners is 6GB for Linux, 5.5GB for Windows,
-      and 13GB for macOS).
+      The amount of memory in MB that can be used by CodeQL extractors.
+      By default, CodeQL extractors will use most of the memory available in the system
+      (which for GitHub-hosted runners is 6GB for Linux, 5.5GB for Windows, and 13GB for macOS).
+      This input also sets the amount of memory that can later be used by the "analyze" action.
     required: false
-  add-snippets:
-    description: Does not have any effect.
-    required: false
-    deprecationMessage: >-
-      The input "add-snippets" has been removed and no longer has any effect.
-  skip-queries:
-    description: If this option is set, the CodeQL database will be built but no queries will be run on it. Thus, no results will be produced.
-    required: false
-    default: "false"
   threads:
     description: >-
-      The number of threads that can be used by CodeQL for database finalization and query execution.
-      By default, this action will use the same number of threads as previously set in the "init" action.
-      If the "init" action also does not have an explicit "threads" input, this action will use all the
-      hardware threads available in the system (which for GitHub-hosted runners is 2 for Linux and Windows
-      and 3 for macOS).
+      The number of threads that can be used by CodeQL extractors.
+      By default, CodeQL extractors will use all the hardware threads available in the system
+      (which for GitHub-hosted runners is 2 for Linux and Windows and 3 for macOS).
+      This input also sets the number of threads that can later be used by the "analyze" action.
     required: false
-  checkout_path:
-    description: "The path at which the analyzed repository was checked out. Used to relativize any absolute paths in the uploaded SARIF file."
-    required: false
-    # If changing this, make sure to update workflow.ts accordingly.
-    default: ${{ github.workspace }}
-  ref:
-    description: "The ref where results will be uploaded. If not provided, the Action will use the GITHUB_REF environment variable. If provided, the sha input must be provided as well. This input is ignored for pull requests from forks. Expected format: refs/heads/<branch name>, refs/tags/<tag>, refs/pull/<number>/merge, or refs/pull/<number>/head."
-    required: false
-  sha:
-    description: "The sha of the HEAD of the ref where results will be uploaded. If not provided, the Action will use the GITHUB_SHA environment variable. If provided, the ref input must be provided as well. This input is ignored for pull requests from forks."
-    required: false
-  category:
-    description: String used by Code Scanning for matching the analyses
-    required: false
-  upload-database:
-    description: Whether to upload the resulting CodeQL database
-    required: false
-    default: "true"
-  post-processed-sarif-path:
+  debug:
     description: >-
-      Before uploading the SARIF files produced by the CodeQL CLI, the CodeQL Action may perform some post-processing
-      on them. Ordinarily, these post-processed SARIF files are not saved to disk. However, if a path is provided as an
-      argument for this input, they are written to the specified directory.
+      Enable debugging mode.
+      This will result in more output being produced which may be useful when debugging certain issues.
+      Debugging mode is enabled automatically when step debug logging is turned on.
     required: false
-  wait-for-processing:
-    description: If true, the Action will wait for the uploaded SARIF to be processed before completing.
-    required: true
-    default: "true"
-  token:
-    description: "GitHub token to use for authenticating with this instance of GitHub. The token must be the built-in GitHub Actions token, and the workflow must have the `security-events: write` permission. Most of the time it is advisable to avoid specifying this input so that the workflow falls back to using the default value."
+    default: 'false'
+  debug-artifact-name:
+    description: >-
+      The name of the artifact to store debugging information in.
+      This is only used when debug mode is enabled.
     required: false
-    default: ${{ github.token }}
-  matrix:
-    default: ${{ toJson(matrix) }}
-  expect-error:
-    description: "[Internal] It is an error to use this input outside of integration testing of the codeql-action."
+  debug-database-name:
+    description: >-
+      The name of the database uploaded to the debugging artifact.
+      This is only used when debug mode is enabled.
     required: false
-    default: "false"
+  trap-caching:
+    description: >-
+      Explicitly enable or disable TRAP caching rather than respecting the feature flag for it.
+    required: false
+  dependency-caching:
+    description: >-
+      Explicitly enable or disable caching of project build dependencies.
+    required: false
+  check-run-id:
+    description: >-
+      [Internal] The ID of the check run, as provided by the Actions runtime environment. Do not set this value manually.
+    default: ${{ job.check_run_id }}
+    required: false
 outputs:
-  db-locations:
-    description: A map from language to absolute path for each database created by CodeQL.
-  sarif-output:
-    description: Absolute, local path to the directory containing the generated SARIF file.
-  sarif-id:
-    description: The ID of the uploaded SARIF file.
+  codeql-path:
+    description: The path of the CodeQL binary used for analysis
+  codeql-version:
+    description: The version of the CodeQL binary used for analysis
 runs:
   using: node20
-  main: "../lib/analyze-action.js"
-  post: "../lib/analyze-action-post.js"
+  main: '../lib/init-action.js'
+  post: '../lib/init-action-post.js'
