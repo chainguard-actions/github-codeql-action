@@ -1,0 +1,4 @@
+{
+  "upstream": "github/codeql-action",
+  "version": "codeql-bundle-v2.25.1"
+}
