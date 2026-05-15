@@ -1,0 +1,1082 @@
+import * as filepath from "path";
+
+import * as core from "@actions/core";
+import * as toolcache from "@actions/tool-cache";
+import test, { ExecutionContext } from "ava";
+import sinon from "sinon";
+
+import * as apiClient from "./api-client";
+import * as defaults from "./defaults.json";
+import { setUpFeatureFlagTests } from "./feature-flags/testing-util";
+import { KnownLanguage } from "./languages";
+import { getRunnerLogger, Logger } from "./logging";
+import * as startProxyExports from "./start-proxy";
+import { parseLanguage } from "./start-proxy";
+import * as statusReport from "./status-report";
+import {
+  assertNotLogged,
+  checkExpectedLogMessages,
+  createFeatures,
+  makeTestToken,
+  RecordingLogger,
+  setupTests,
+  withRecordingLoggerAsync,
+} from "./testing-utils";
+import {
+  ConfigurationError,
+  GitHubVariant,
+  GitHubVersion,
+  withTmpDir,
+} from "./util";
+
+setupTests(test);
+
+const sendFailedStatusReportTest = test.macro({
+  exec: async (
+    t: ExecutionContext<unknown>,
+    err: Error,
+    expectedMessage: string,
+    expectedStatus: statusReport.ActionStatus = "failure",
+  ) => {
+    const now = new Date();
+
+    // Override core.setFailed to avoid it setting the program's exit code
+    sinon.stub(core, "setFailed").returns();
+
+    const createStatusReportBase = sinon.stub(
+      statusReport,
+      "createStatusReportBase",
+    );
+    createStatusReportBase.resolves(undefined);
+
+    await withRecordingLoggerAsync(async (logger) => {
+      await startProxyExports.sendFailedStatusReport(
+        logger,
+        now,
+        undefined,
+        err,
+      );
+
+      // Check that the stub has been called exactly once, with the expected arguments,
+      // but not with the message from the error.
+      sinon.assert.calledOnceWithExactly(
+        createStatusReportBase,
+        statusReport.ActionName.StartProxy,
+        expectedStatus,
+        now,
+        sinon.match.any,
+        sinon.match.any,
+        sinon.match.any,
+        expectedMessage,
+      );
+      t.false(
+        createStatusReportBase.calledWith(
+          statusReport.ActionName.StartProxy,
+          expectedStatus,
+          now,
+          sinon.match.any,
+          sinon.match.any,
+          sinon.match.any,
+          sinon.match((msg: string) => msg.includes(err.message)),
+        ),
+        "createStatusReportBase was called with the error message",
+      );
+    });
+  },
+
+  title: (providedTitle = "") => `sendFailedStatusReport - ${providedTitle}`,
+});
+
+test.serial(
+  "reports generic error message for non-StartProxyError error",
+  sendFailedStatusReportTest,
+  new Error("Something went wrong today"),
+  "Error from start-proxy Action omitted (Error).",
+);
+
+test.serial(
+  "reports generic error message for non-StartProxyError error with safe error message",
+  sendFailedStatusReportTest,
+  new Error(
+    startProxyExports.getStartProxyErrorMessage(
+      startProxyExports.StartProxyErrorType.DownloadFailed,
+    ),
+  ),
+  "Error from start-proxy Action omitted (Error).",
+);
+
+test.serial(
+  "reports generic error message for ConfigurationError error",
+  sendFailedStatusReportTest,
+  new ConfigurationError("Something went wrong today"),
+  "Error from start-proxy Action omitted (ConfigurationError).",
+  "user-error",
+);
+
+const toEncodedJSON = (data: any) =>
+  Buffer.from(JSON.stringify(data)).toString("base64");
+
+const mixedCredentials = [
+  { type: "npm_registry", host: "npm.pkg.github.com", token: "abc" },
+  { type: "maven_repository", host: "maven.pkg.github.com", token: "def" },
+  { type: "nuget_feed", host: "nuget.pkg.github.com", token: "ghi" },
+  { type: "goproxy_server", host: "goproxy.example.com", token: "jkl" },
+  { type: "git_source", host: "github.com/github", token: "mno" },
+];
+
+test("getCredentials prefers registriesCredentials over registrySecrets", async (t) => {
+  const registryCredentials = Buffer.from(
+    JSON.stringify([
+      { type: "npm_registry", host: "npm.pkg.github.com", token: "abc" },
+    ]),
+  ).toString("base64");
+  const registrySecrets = JSON.stringify([
+    { type: "npm_registry", host: "registry.npmjs.org", token: "def" },
+  ]);
+
+  const credentials = startProxyExports.getCredentials(
+    getRunnerLogger(true),
+    registrySecrets,
+    registryCredentials,
+    undefined,
+  );
+  t.is(credentials.length, 1);
+  t.is(credentials[0].host, "npm.pkg.github.com");
+});
+
+test("getCredentials throws an error when configurations are not an array", async (t) => {
+  const registryCredentials = Buffer.from(
+    JSON.stringify({ type: "npm_registry", token: "abc" }),
+  ).toString("base64");
+
+  t.throws(
+    () =>
+      startProxyExports.getCredentials(
+        getRunnerLogger(true),
+        undefined,
+        registryCredentials,
+        undefined,
+      ),
+    {
+      message:
+        "Expected credentials data to be an array of configurations, but it is not.",
+    },
+  );
+});
+
+test("getCredentials throws error when credential is not an object", async (t) => {
+  const testCredentials = [["foo"], [null]].map(toEncodedJSON);
+
+  for (const testCredential of testCredentials) {
+    t.throws(
+      () =>
+        startProxyExports.getCredentials(
+          getRunnerLogger(true),
+          undefined,
+          testCredential,
+          undefined,
+        ),
+      {
+        message: "Invalid credentials - must be an object",
+      },
+    );
+  }
+});
+
+test("getCredentials throws error when credential is missing type", async (t) => {
+  const testCredentials = [[{ token: "abc", url: "https://localhost" }]].map(
+    toEncodedJSON,
+  );
+
+  for (const testCredential of testCredentials) {
+    t.throws(
+      () =>
+        startProxyExports.getCredentials(
+          getRunnerLogger(true),
+          undefined,
+          testCredential,
+          undefined,
+        ),
+      {
+        message: "Invalid credentials - must have a type",
+      },
+    );
+  }
+});
+
+test("getCredentials throws error when credential missing host and url", async (t) => {
+  const testCredentials = [
+    [{ type: "npm_registry", token: "abc" }],
+    [{ type: "npm_registry", token: "abc", host: null }],
+    [{ type: "npm_registry", token: "abc", url: null }],
+  ].map(toEncodedJSON);
+
+  for (const testCredential of testCredentials) {
+    t.throws(
+      () =>
+        startProxyExports.getCredentials(
+          getRunnerLogger(true),
+          undefined,
+          testCredential,
+          undefined,
+        ),
+      {
+        message: "Invalid credentials - must specify host or url",
+      },
+    );
+  }
+});
+
+test("getCredentials filters by language when specified", async (t) => {
+  const credentials = startProxyExports.getCredentials(
+    getRunnerLogger(true),
+    undefined,
+    toEncodedJSON(mixedCredentials),
+    KnownLanguage.java,
+  );
+  t.is(credentials.length, 1);
+  t.is(credentials[0].type, "maven_repository");
+});
+
+test("getCredentials returns all for a language when specified", async (t) => {
+  const credentials = startProxyExports.getCredentials(
+    getRunnerLogger(true),
+    undefined,
+    toEncodedJSON(mixedCredentials),
+    KnownLanguage.go,
+  );
+  t.is(credentials.length, 2);
+
+  const credentialsTypes = credentials.map((c) => c.type);
+  t.assert(credentialsTypes.includes("goproxy_server"));
+  t.assert(credentialsTypes.includes("git_source"));
+});
+
+test("getCredentials returns all goproxy_servers for Go when specified", async (t) => {
+  const multipleGoproxyServers = [
+    { type: "goproxy_server", host: "goproxy1.example.com", token: "token1" },
+    { type: "goproxy_server", host: "goproxy2.example.com", token: "token2" },
+    { type: "git_source", host: "github.com/github", token: "mno" },
+  ];
+
+  const credentials = startProxyExports.getCredentials(
+    getRunnerLogger(true),
+    undefined,
+    toEncodedJSON(multipleGoproxyServers),
+    KnownLanguage.go,
+  );
+  t.is(credentials.length, 3);
+
+  const goproxyServers = credentials.filter((c) => c.type === "goproxy_server");
+  t.is(goproxyServers.length, 2);
+  t.assert(goproxyServers.some((c) => c.host === "goproxy1.example.com"));
+  t.assert(goproxyServers.some((c) => c.host === "goproxy2.example.com"));
+});
+
+test("getCredentials returns all maven_repositories for Java when specified", async (t) => {
+  const multipleMavenRepositories = [
+    {
+      type: "maven_repository",
+      host: "maven1.pkg.github.com",
+      token: "token1",
+    },
+    {
+      type: "maven_repository",
+      host: "maven2.pkg.github.com",
+      token: "token2",
+    },
+    { type: "git_source", host: "github.com/github", token: "mno" },
+  ];
+
+  const credentials = startProxyExports.getCredentials(
+    getRunnerLogger(true),
+    undefined,
+    toEncodedJSON(multipleMavenRepositories),
+    KnownLanguage.java,
+  );
+  t.is(credentials.length, 2);
+
+  const mavenRepositories = credentials.filter(
+    (c) => c.type === "maven_repository",
+  );
+  t.assert(mavenRepositories.some((c) => c.host === "maven1.pkg.github.com"));
+  t.assert(mavenRepositories.some((c) => c.host === "maven2.pkg.github.com"));
+});
+
+test("getCredentials returns all credentials when no language specified", async (t) => {
+  const credentialsInput = toEncodedJSON(mixedCredentials);
+
+  const credentials = startProxyExports.getCredentials(
+    getRunnerLogger(true),
+    undefined,
+    credentialsInput,
+    undefined,
+  );
+  t.is(credentials.length, mixedCredentials.length);
+});
+
+test("getCredentials throws an error when non-printable characters are used", async (t) => {
+  const invalidCredentials: startProxyExports.RawCredential[] = [
+    { type: "nuget_feed", host: "1nuget.pkg.github.com", token: "abc\u0000" }, // Non-printable character in token
+    { type: "nuget_feed", host: "2nuget.pkg.github.com\u0001" }, // Non-printable character in host
+    {
+      type: "nuget_feed",
+      host: "3nuget.pkg.github.com",
+      password: "ghi\u0002",
+    }, // Non-printable character in password
+    {
+      type: "nuget_feed",
+      host: "4nuget.pkg.github.com",
+      token: "ghi\x00",
+    }, // Non-printable character in token
+  ];
+
+  for (const invalidCredential of invalidCredentials) {
+    const credentialsInput = toEncodedJSON([invalidCredential]);
+
+    t.throws(
+      () =>
+        startProxyExports.getCredentials(
+          getRunnerLogger(true),
+          undefined,
+          credentialsInput,
+          undefined,
+        ),
+      {
+        message:
+          "Invalid credentials - fields must contain only printable characters",
+      },
+    );
+  }
+});
+
+const validAzureCredential: startProxyExports.AzureConfig = {
+  "tenant-id": "12345678-1234-1234-1234-123456789012",
+  "client-id": "abcdef01-2345-6789-abcd-ef0123456789",
+};
+
+const validAwsCredential: startProxyExports.AWSConfig = {
+  "aws-region": "us-east-1",
+  "account-id": "123456789012",
+  "role-name": "MY_ROLE",
+  domain: "MY_DOMAIN",
+  "domain-owner": "987654321098",
+  audience: "custom-audience",
+};
+
+const validJFrogCredential: startProxyExports.JFrogConfig = {
+  "jfrog-oidc-provider-name": "MY_PROVIDER",
+  audience: "jfrog-audience",
+  "identity-mapping-name": "my-mapping",
+};
+
+test("getCredentials throws an error when non-printable characters are used for Azure OIDC", (t) => {
+  for (const key of Object.keys(validAzureCredential)) {
+    const invalidAzureCredential = {
+      ...validAzureCredential,
+      [key]: "123\x00",
+    };
+    const invalidCredential: startProxyExports.RawCredential = {
+      type: "nuget_feed",
+      host: `${key}.nuget.pkg.github.com`,
+      ...invalidAzureCredential,
+    };
+    const credentialsInput = toEncodedJSON([invalidCredential]);
+
+    t.throws(
+      () =>
+        startProxyExports.getCredentials(
+          getRunnerLogger(true),
+          undefined,
+          credentialsInput,
+          undefined,
+        ),
+      {
+        message:
+          "Invalid credentials - fields must contain only printable characters",
+      },
+    );
+  }
+});
+
+test("getCredentials throws an error when non-printable characters are used for AWS OIDC", (t) => {
+  for (const key of Object.keys(validAwsCredential)) {
+    const invalidAwsCredential = {
+      ...validAwsCredential,
+      [key]: "123\x00",
+    };
+    const invalidCredential: startProxyExports.RawCredential = {
+      type: "nuget_feed",
+      host: `${key}.nuget.pkg.github.com`,
+      ...invalidAwsCredential,
+    };
+    const credentialsInput = toEncodedJSON([invalidCredential]);
+
+    t.throws(
+      () =>
+        startProxyExports.getCredentials(
+          getRunnerLogger(true),
+          undefined,
+          credentialsInput,
+          undefined,
+        ),
+      {
+        message:
+          "Invalid credentials - fields must contain only printable characters",
+      },
+    );
+  }
+});
+
+test("getCredentials throws an error when non-printable characters are used for JFrog OIDC", (t) => {
+  for (const key of Object.keys(validJFrogCredential)) {
+    const invalidJFrogCredential = {
+      ...validJFrogCredential,
+      [key]: "123\x00",
+    };
+    const invalidCredential: startProxyExports.RawCredential = {
+      type: "nuget_feed",
+      host: `${key}.nuget.pkg.github.com`,
+      ...invalidJFrogCredential,
+    };
+    const credentialsInput = toEncodedJSON([invalidCredential]);
+
+    t.throws(
+      () =>
+        startProxyExports.getCredentials(
+          getRunnerLogger(true),
+          undefined,
+          credentialsInput,
+          undefined,
+        ),
+      {
+        message:
+          "Invalid credentials - fields must contain only printable characters",
+      },
+    );
+  }
+});
+
+test("getCredentials accepts OIDC configurations", (t) => {
+  const oidcConfigurations = [
+    {
+      type: "nuget_feed",
+      host: "azure.pkg.github.com",
+      ...validAzureCredential,
+    },
+    {
+      type: "nuget_feed",
+      host: "aws.pkg.github.com",
+      ...validAwsCredential,
+    },
+    {
+      type: "nuget_feed",
+      host: "jfrog.pkg.github.com",
+      ...validJFrogCredential,
+    },
+  ];
+
+  const credentials = startProxyExports.getCredentials(
+    getRunnerLogger(true),
+    undefined,
+    toEncodedJSON(oidcConfigurations),
+    KnownLanguage.csharp,
+  );
+  t.is(credentials.length, 3);
+
+  t.assert(credentials.every((c) => c.type === "nuget_feed"));
+  t.assert(credentials.some((c) => startProxyExports.isAzureConfig(c)));
+  t.assert(credentials.some((c) => startProxyExports.isAWSConfig(c)));
+  t.assert(credentials.some((c) => startProxyExports.isJFrogConfig(c)));
+});
+
+const getCredentialsMacro = test.macro({
+  exec: async (
+    t: ExecutionContext<unknown>,
+    credentials: startProxyExports.RawCredential[],
+    checkAccepted: (
+      t: ExecutionContext<unknown>,
+      logger: RecordingLogger,
+      results: startProxyExports.Credential[],
+    ) => void,
+  ) => {
+    const logger = new RecordingLogger();
+    const credentialsString = toEncodedJSON(credentials);
+
+    const results = startProxyExports.getCredentials(
+      logger,
+      undefined,
+      credentialsString,
+      undefined,
+    );
+
+    checkAccepted(t, logger, results);
+  },
+
+  title: (providedTitle = "") => `getCredentials - ${providedTitle}`,
+});
+
+test(
+  "warns for PAT-like password without a username",
+  getCredentialsMacro,
+  [
+    {
+      type: "git_server",
+      host: "https://github.com/",
+      password: `ghp_${makeTestToken()}`,
+    },
+  ],
+  (t, logger, results) => {
+    // The configurations should be accepted, despite the likely problem.
+    t.assert(results);
+    t.is(results.length, 1);
+    t.is(results[0].type, "git_server");
+    t.is(results[0].host, "https://github.com/");
+
+    if (startProxyExports.isUsernamePassword(results[0])) {
+      t.assert(results[0].password?.startsWith("ghp_"));
+    } else {
+      t.fail("Expected a `UsernamePassword`-based credential.");
+    }
+
+    // A warning should have been logged.
+    checkExpectedLogMessages(t, logger.messages, [
+      "using a GitHub Personal Access Token (PAT), but no username was provided",
+    ]);
+  },
+);
+
+test(
+  "no warning for PAT-like password with a username",
+  getCredentialsMacro,
+  [
+    {
+      type: "git_server",
+      host: "https://github.com/",
+      username: "someone",
+      password: `ghp_${makeTestToken()}`,
+    },
+  ],
+  (t, logger, results) => {
+    // The configurations should be accepted, despite the likely problem.
+    t.assert(results);
+    t.is(results.length, 1);
+    t.is(results[0].type, "git_server");
+    t.is(results[0].host, "https://github.com/");
+
+    if (startProxyExports.isUsernamePassword(results[0])) {
+      t.assert(results[0].password?.startsWith("ghp_"));
+    } else {
+      t.fail("Expected a `UsernamePassword`-based credential.");
+    }
+
+    assertNotLogged(
+      t,
+      logger,
+      "using a GitHub Personal Access Token (PAT), but no username was provided",
+    );
+  },
+);
+
+test(
+  "warns for PAT-like token without a username",
+  getCredentialsMacro,
+  [
+    {
+      type: "git_server",
+      host: "https://github.com/",
+      token: `ghp_${makeTestToken()}`,
+    },
+  ],
+  (t, logger, results) => {
+    // The configurations should be accepted, despite the likely problem.
+    t.assert(results);
+    t.is(results.length, 1);
+    t.is(results[0].type, "git_server");
+    t.is(results[0].host, "https://github.com/");
+
+    if (startProxyExports.isToken(results[0])) {
+      t.assert(results[0].token?.startsWith("ghp_"));
+    } else {
+      t.fail("Expected a `Token`-based credential.");
+    }
+
+    // A warning should have been logged.
+    checkExpectedLogMessages(t, logger.messages, [
+      "using a GitHub Personal Access Token (PAT), but no username was provided",
+    ]);
+  },
+);
+
+test(
+  "no warning for PAT-like token with a username",
+  getCredentialsMacro,
+  [
+    {
+      type: "git_server",
+      host: "https://github.com/",
+      username: "someone",
+      token: `ghp_${makeTestToken()}`,
+    },
+  ],
+  (t, logger, results) => {
+    // The configurations should be accepted, despite the likely problem.
+    t.assert(results);
+    t.is(results.length, 1);
+    t.is(results[0].type, "git_server");
+    t.is(results[0].host, "https://github.com/");
+
+    if (startProxyExports.isToken(results[0])) {
+      t.assert(results[0].token?.startsWith("ghp_"));
+    } else {
+      t.fail("Expected a `Token`-based credential.");
+    }
+
+    assertNotLogged(
+      t,
+      logger,
+      "using a GitHub Personal Access Token (PAT), but no username was provided",
+    );
+  },
+);
+
+test("getCredentials returns all credentials for Actions when using LANGUAGE_TO_REGISTRY_TYPE", async (t) => {
+  const credentialsInput = toEncodedJSON(mixedCredentials);
+
+  const credentials = startProxyExports.getCredentials(
+    getRunnerLogger(true),
+    undefined,
+    credentialsInput,
+    KnownLanguage.actions,
+    false,
+  );
+  t.is(credentials.length, mixedCredentials.length);
+});
+
+test("getCredentials returns no credentials for Actions when using NEW_LANGUAGE_TO_REGISTRY_TYPE", async (t) => {
+  const credentialsInput = toEncodedJSON(mixedCredentials);
+
+  const credentials = startProxyExports.getCredentials(
+    getRunnerLogger(true),
+    undefined,
+    credentialsInput,
+    KnownLanguage.actions,
+    true,
+  );
+  t.deepEqual(credentials, []);
+});
+
+test("parseLanguage", async (t) => {
+  // Exact matches
+  t.deepEqual(parseLanguage("csharp"), KnownLanguage.csharp);
+  t.deepEqual(parseLanguage("cpp"), KnownLanguage.cpp);
+  t.deepEqual(parseLanguage("go"), KnownLanguage.go);
+  t.deepEqual(parseLanguage("java"), KnownLanguage.java);
+  t.deepEqual(parseLanguage("javascript"), KnownLanguage.javascript);
+  t.deepEqual(parseLanguage("python"), KnownLanguage.python);
+  t.deepEqual(parseLanguage("rust"), KnownLanguage.rust);
+
+  // Aliases
+  t.deepEqual(parseLanguage("c"), KnownLanguage.cpp);
+  t.deepEqual(parseLanguage("c++"), KnownLanguage.cpp);
+  t.deepEqual(parseLanguage("c#"), KnownLanguage.csharp);
+  t.deepEqual(parseLanguage("kotlin"), KnownLanguage.java);
+  t.deepEqual(parseLanguage("typescript"), KnownLanguage.javascript);
+
+  // spaces and case-insensitivity
+  t.deepEqual(parseLanguage("  \t\nCsHaRp\t\t"), KnownLanguage.csharp);
+  t.deepEqual(parseLanguage("  \t\nkOtLin\t\t"), KnownLanguage.java);
+
+  // Not matches
+  t.deepEqual(parseLanguage("foo"), undefined);
+  t.deepEqual(parseLanguage(" "), undefined);
+  t.deepEqual(parseLanguage(""), undefined);
+});
+
+function mockGetApiClient(endpoints: any) {
+  return (
+    sinon
+      .stub(apiClient, "getApiClient")
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      .returns({ rest: endpoints } as any)
+  );
+}
+
+type ReleaseAssets = Array<{ name: string; url?: string }>;
+
+function mockGetReleaseByTag(assets?: ReleaseAssets) {
+  const getReleaseByTag =
+    assets === undefined
+      ? sinon.stub().rejects()
+      : sinon.stub().resolves({
+          status: 200,
+          data: { assets },
+          headers: {},
+          url: "GET /repos/:owner/:repo/releases/tags/:tag",
+        });
+
+  return mockGetApiClient({ repos: { getReleaseByTag } });
+}
+
+function mockOfflineFeatures(tempDir: string, logger: Logger) {
+  // Using GHES ensures that we are using `OfflineFeatures`.
+  const gitHubVersion = {
+    type: GitHubVariant.GHES,
+    version: "3.0.0",
+  };
+  sinon.stub(apiClient, "getGitHubVersion").resolves(gitHubVersion);
+
+  return setUpFeatureFlagTests(tempDir, logger, gitHubVersion);
+}
+
+test.serial(
+  "getDownloadUrl returns fallback when `getReleaseByVersion` rejects",
+  async (t) => {
+    const logger = new RecordingLogger();
+    mockGetReleaseByTag();
+
+    await withTmpDir(async (tempDir) => {
+      const features = mockOfflineFeatures(tempDir, logger);
+      const info = await startProxyExports.getDownloadUrl(
+        getRunnerLogger(true),
+        features,
+      );
+
+      t.is(info.version, startProxyExports.UPDATEJOB_PROXY_VERSION);
+      t.is(
+        info.url,
+        startProxyExports.getFallbackUrl(startProxyExports.getProxyPackage()),
+      );
+    });
+  },
+);
+
+test.serial(
+  "getDownloadUrl returns fallback when there's no matching release asset",
+  async (t) => {
+    const logger = new RecordingLogger();
+    const testAssets = [[], [{ name: "foo" }]];
+
+    await withTmpDir(async (tempDir) => {
+      const features = mockOfflineFeatures(tempDir, logger);
+
+      for (const assets of testAssets) {
+        const stub = mockGetReleaseByTag(assets);
+        const info = await startProxyExports.getDownloadUrl(
+          getRunnerLogger(true),
+          features,
+        );
+
+        t.is(info.version, startProxyExports.UPDATEJOB_PROXY_VERSION);
+        t.is(
+          info.url,
+          startProxyExports.getFallbackUrl(startProxyExports.getProxyPackage()),
+        );
+
+        stub.restore();
+      }
+    });
+  },
+);
+
+test.serial("getDownloadUrl returns matching release asset", async (t) => {
+  const logger = new RecordingLogger();
+  const assets = [
+    { name: "foo", url: "other-url" },
+    { name: startProxyExports.getProxyPackage(), url: "url-we-want" },
+  ];
+  mockGetReleaseByTag(assets);
+
+  await withTmpDir(async (tempDir) => {
+    const features = mockOfflineFeatures(tempDir, logger);
+    const info = await startProxyExports.getDownloadUrl(
+      getRunnerLogger(true),
+      features,
+    );
+
+    t.is(info.version, defaults.cliVersion);
+    t.is(info.url, "url-we-want");
+  });
+});
+
+test.serial(
+  "getSafeErrorMessage - returns actual message for `StartProxyError`",
+  (t) => {
+    const error = new startProxyExports.StartProxyError(
+      startProxyExports.StartProxyErrorType.DownloadFailed,
+    );
+    t.is(
+      startProxyExports.getSafeErrorMessage(error),
+      startProxyExports.getStartProxyErrorMessage(error.errorType),
+    );
+  },
+);
+
+test.serial(
+  "getSafeErrorMessage - does not return message for arbitrary errors",
+  (t) => {
+    const error = new Error(
+      startProxyExports.getStartProxyErrorMessage(
+        startProxyExports.StartProxyErrorType.DownloadFailed,
+      ),
+    );
+
+    const message = startProxyExports.getSafeErrorMessage(error);
+
+    t.not(message, error.message);
+    t.assert(message.startsWith("Error from start-proxy Action omitted"));
+    t.assert(message.includes(error.name));
+  },
+);
+
+const wrapFailureTest = test.macro({
+  exec: async (
+    t: ExecutionContext<unknown>,
+    setup: () => void,
+    fn: (logger: Logger) => Promise<void>,
+  ) => {
+    await withRecordingLoggerAsync(async (logger) => {
+      setup();
+
+      await t.throwsAsync(fn(logger), {
+        instanceOf: startProxyExports.StartProxyError,
+      });
+    });
+  },
+  title: (providedTitle) => `${providedTitle} - wraps errors on failure`,
+});
+
+test.serial("downloadProxy - returns file path on success", async (t) => {
+  await withRecordingLoggerAsync(async (logger) => {
+    const testPath = "/some/path";
+    sinon.stub(toolcache, "downloadTool").resolves(testPath);
+
+    const result = await startProxyExports.downloadProxy(
+      logger,
+      "url",
+      undefined,
+    );
+    t.is(result, testPath);
+  });
+});
+
+test.serial(
+  "downloadProxy",
+  wrapFailureTest,
+  () => {
+    sinon.stub(toolcache, "downloadTool").throws();
+  },
+  async (logger) => {
+    await startProxyExports.downloadProxy(logger, "url", undefined);
+  },
+);
+
+test.serial("extractProxy - returns file path on success", async (t) => {
+  await withRecordingLoggerAsync(async (logger) => {
+    const testPath = "/some/path";
+    sinon.stub(toolcache, "extractTar").resolves(testPath);
+
+    const result = await startProxyExports.extractProxy(logger, "/other/path");
+    t.is(result, testPath);
+  });
+});
+
+test.serial(
+  "extractProxy",
+  wrapFailureTest,
+  () => {
+    sinon.stub(toolcache, "extractTar").throws();
+  },
+  async (logger) => {
+    await startProxyExports.extractProxy(logger, "path");
+  },
+);
+
+test.serial("cacheProxy - returns file path on success", async (t) => {
+  await withRecordingLoggerAsync(async (logger) => {
+    const testPath = "/some/path";
+    sinon.stub(toolcache, "cacheDir").resolves(testPath);
+
+    const result = await startProxyExports.cacheProxy(
+      logger,
+      "/other/path",
+      "proxy",
+      "1.0",
+    );
+    t.is(result, testPath);
+  });
+});
+
+test.serial(
+  "cacheProxy",
+  wrapFailureTest,
+  () => {
+    sinon.stub(toolcache, "cacheDir").throws();
+  },
+  async (logger) => {
+    await startProxyExports.cacheProxy(logger, "/other/path", "proxy", "1.0");
+  },
+);
+
+test.serial(
+  "getProxyBinaryPath - returns path from tool cache if available",
+  async (t) => {
+    const logger = new RecordingLogger();
+    mockGetReleaseByTag();
+
+    await withTmpDir(async (tempDir) => {
+      const toolcachePath = "/path/to/proxy/dir";
+      sinon.stub(toolcache, "find").returns(toolcachePath);
+
+      const features = mockOfflineFeatures(tempDir, logger);
+      const path = await startProxyExports.getProxyBinaryPath(logger, features);
+
+      t.assert(path);
+      t.is(
+        path,
+        filepath.join(toolcachePath, startProxyExports.getProxyFilename()),
+      );
+    });
+  },
+);
+
+test.serial(
+  "getProxyBinaryPath - downloads proxy if not in cache",
+  async (t) => {
+    const logger = new RecordingLogger();
+    const downloadUrl = "url-we-want";
+    mockGetReleaseByTag([
+      { name: startProxyExports.getProxyPackage(), url: downloadUrl },
+    ]);
+
+    const toolcachePath = "/path/to/proxy/dir";
+    const find = sinon.stub(toolcache, "find").returns("");
+    const getApiDetails = sinon.stub(apiClient, "getApiDetails").returns({
+      auth: "",
+      url: "",
+      apiURL: "",
+    });
+    const getAuthorizationHeaderFor = sinon
+      .stub(apiClient, "getAuthorizationHeaderFor")
+      .returns(undefined);
+    const archivePath = "/path/to/archive";
+    const downloadTool = sinon
+      .stub(toolcache, "downloadTool")
+      .resolves(archivePath);
+    const extractedPath = "/path/to/extracted";
+    const extractTar = sinon
+      .stub(toolcache, "extractTar")
+      .resolves(extractedPath);
+    const cacheDir = sinon.stub(toolcache, "cacheDir").resolves(toolcachePath);
+
+    const path = await startProxyExports.getProxyBinaryPath(
+      logger,
+      createFeatures([]),
+    );
+
+    t.assert(find.calledOnce);
+    t.assert(getApiDetails.calledOnce);
+    t.assert(getAuthorizationHeaderFor.calledOnce);
+    t.assert(downloadTool.calledOnceWith(downloadUrl));
+    t.assert(extractTar.calledOnceWith(archivePath));
+    t.assert(cacheDir.calledOnceWith(extractedPath));
+    t.assert(path);
+    t.is(
+      path,
+      filepath.join(toolcachePath, startProxyExports.getProxyFilename()),
+    );
+
+    checkExpectedLogMessages(t, logger.messages, [
+      `Found '${startProxyExports.getProxyPackage()}' in release '${defaults.bundleVersion}' at '${downloadUrl}'`,
+    ]);
+  },
+);
+
+test.serial(
+  "getProxyBinaryPath - downloads proxy based on features if not in cache",
+  async (t) => {
+    const logger = new RecordingLogger();
+    const expectedTag = "codeql-bundle-v2.20.1";
+    const expectedParams = {
+      owner: "github",
+      repo: "codeql-action",
+      tag: expectedTag,
+    };
+    const downloadUrl = "url-we-want";
+    const assets = [
+      {
+        name: startProxyExports.getProxyPackage(),
+        url: downloadUrl,
+      },
+    ];
+
+    const getReleaseByTag = sinon.stub();
+    getReleaseByTag.withArgs(sinon.match(expectedParams)).resolves({
+      status: 200,
+      data: { assets },
+      headers: {},
+      url: "GET /repos/:owner/:repo/releases/tags/:tag",
+    });
+    mockGetApiClient({ repos: { getReleaseByTag } });
+
+    await withTmpDir(async (tempDir) => {
+      const toolcachePath = "/path/to/proxy/dir";
+      const find = sinon.stub(toolcache, "find").returns("");
+      const getApiDetails = sinon.stub(apiClient, "getApiDetails").returns({
+        auth: "",
+        url: "",
+        apiURL: "",
+      });
+      const getAuthorizationHeaderFor = sinon
+        .stub(apiClient, "getAuthorizationHeaderFor")
+        .returns(undefined);
+      const archivePath = "/path/to/archive";
+      const downloadTool = sinon
+        .stub(toolcache, "downloadTool")
+        .resolves(archivePath);
+      const extractedPath = "/path/to/extracted";
+      const extractTar = sinon
+        .stub(toolcache, "extractTar")
+        .resolves(extractedPath);
+      const cacheDir = sinon
+        .stub(toolcache, "cacheDir")
+        .resolves(toolcachePath);
+
+      const gitHubVersion: GitHubVersion = {
+        type: GitHubVariant.DOTCOM,
+      };
+      sinon.stub(apiClient, "getGitHubVersion").resolves(gitHubVersion);
+
+      const features = setUpFeatureFlagTests(tempDir, logger, gitHubVersion);
+      sinon.stub(features, "getValue").callsFake(async (_feature, _codeql) => {
+        return true;
+      });
+      const getDefaultCliVersion = sinon
+        .stub(features, "getDefaultCliVersion")
+        .resolves({ cliVersion: "2.20.1", tagName: expectedTag });
+      const path = await startProxyExports.getProxyBinaryPath(logger, features);
+
+      t.assert(getDefaultCliVersion.calledOnce);
+      sinon.assert.calledOnceWithMatch(
+        getReleaseByTag,
+        sinon.match(expectedParams),
+      );
+      t.assert(find.calledOnce);
+      t.assert(getApiDetails.calledOnce);
+      t.assert(getAuthorizationHeaderFor.calledOnce);
+      t.assert(downloadTool.calledOnceWith(downloadUrl));
+      t.assert(extractTar.calledOnceWith(archivePath));
+      t.assert(cacheDir.calledOnceWith(extractedPath));
+
+      t.assert(path);
+      t.is(
+        path,
+        filepath.join(toolcachePath, startProxyExports.getProxyFilename()),
+      );
+    });
+
+    checkExpectedLogMessages(t, logger.messages, [
+      `Found '${startProxyExports.getProxyPackage()}' in release '${expectedTag}' at '${downloadUrl}'`,
+    ]);
+  },
+);
