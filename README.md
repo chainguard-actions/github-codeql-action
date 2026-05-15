@@ -1,6 +1,14 @@
 # github/codeql-action
 
-Hardened GitHub Action by [Chainguard](https://www.chainguard.dev).
+Stub: Don't use this action directly. Read [the documentation](https://docs.github.com/en/code-security/code-scanning/introduction-to-code-scanning/about-code-scanning-with-codeql) instead.
+
+Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at [https://github.com/github/codeql-action](https://github.com/github/codeql-action).
+
+## Versions
+
+| Version | Tag | Upstream commit |
+|---------|-----|-----------------|
+| v4.35.2 | [`v4.35.2`](https://github.com/chainguard-actions/codeql-action/tree/v4.35.2) | — |
 
 ## Privacy
 
