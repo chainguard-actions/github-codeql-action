@@ -8,7 +8,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 
 | Version | Tag | Upstream commit |
 |---------|-----|-----------------|
-| v4.35.2 | [`v4.35.2`](https://github.com/chainguard-actions/github-codeql-action/tree/v4.35.2) | — |
+| v4.35.2 | [`v4.35.2`](https://github.com/chainguard-actions/github-codeql-action/tree/v4.35.2) | [`95e58e9`](https://github.com/github/codeql-action/commit/95e58e9a2cdfd71adc6e0353d5c52f41a045d225) |
 
 ## Privacy
 
