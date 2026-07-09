@@ -1,0 +1,45 @@
+name: Test that the workaround for python 3.12 on windows works
+
+on:
+  push:
+    branches: [main, releases/v*]
+  pull_request:
+    # Run checks on reopened draft PRs to support triggering PR checks on draft PRs that were opened
+    # by other workflows.
+    types: [opened, synchronize, reopened, ready_for_review]
+  schedule:
+    # Weekly on Monday.
+    - cron: '0 0 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  test-setup-python-scripts:
+    env:
+      CODEQL_ACTION_TEST_MODE: true
+    timeout-minutes: 45
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+      with:
+        python-version: 3.12
+
+    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+    - name: Prepare test
+      uses: ./.github/actions/prepare-test
+      with:
+        version: default
+
+    - name: Initialize CodeQL
+      uses: ./../action/init
+      with:
+        tools: linked
+        languages: python
+
+    - name: Analyze
+      uses: ./../action/analyze
