@@ -19,7 +19,7 @@ jobs:
           RELEASE_NAME: ${{ github.event.release.name }}
         run: |
           echo "Release name: $RELEASE_NAME"
-          if [[ "$RELEASE_NAME" == v* ]]; then
+          if [[ $RELEASE_NAME == v* ]]; then
             echo "This is a CodeQL Action release. Create an Immutable Action"
             echo "is-action-release=true" >> $GITHUB_OUTPUT
           else

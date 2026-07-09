@@ -19,7 +19,6 @@ on:
   workflow_dispatch: {}
 permissions:
   contents: read
-  security-events: write
 
 jobs:
   upload-artifacts:
@@ -37,8 +36,7 @@ jobs:
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test
-        with:
-          version: linked
+     uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5n: linked
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: ^1.13.1

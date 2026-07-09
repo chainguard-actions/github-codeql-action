@@ -70,9 +70,8 @@ jobs:
           upload-database: false
       - name: Check database
         shell: bash
-        env:
-          RUBY_DB: ${{ fromJson(steps.analysis.outputs.db-locations).ruby }}
         run: |
+          RUBY_DB="${{ fromJson(steps.analysis.outputs.db-locations).ruby }}"
           if [[ ! -d "$RUBY_DB" ]]; then
             echo "Did not create a database for Ruby."
             exit 1

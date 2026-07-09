@@ -45,7 +45,7 @@ jobs:
         if: runner.os == 'macOS' && matrix.version == 'stable-v2.14.6'
         with:
           python-version: '3.11'
-      - name: Check out repository
+uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4epository
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
       - name: Prepare test
         id: prepare-test
@@ -74,9 +74,8 @@ jobs:
           upload-database: false
       - name: Check database
         shell: bash
-        env:
-          SWIFT_DB: ${{ fromJson(steps.analysis.outputs.db-locations).swift }}
         run: |
+          SWIFT_DB="${{ fromJson(steps.analysis.outputs.db-locations).swift }}"
           if [[ ! -d "$SWIFT_DB" ]]; then
             echo "Did not create a database for Swift."
             exit 1

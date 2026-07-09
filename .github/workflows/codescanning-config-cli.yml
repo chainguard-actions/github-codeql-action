@@ -21,7 +21,6 @@ on:
 
 permissions:
   contents: read
-  security-events: write
 
 jobs:
   code-scanning-config-tests:

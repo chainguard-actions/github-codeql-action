@@ -78,8 +78,7 @@ jobs:
         uses: ./.github/actions/prepare-test
         with:
           version: ${{ matrix.version }}
-          use-all-platform-bundle: 'false'
-          setup-kotlin: 'true'
+          use-all-platform-bundle: 'faluses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5n: 'true'
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: '>=1.21.0'
@@ -108,40 +107,39 @@ jobs:
 
       - name: Check language autodetect for all languages excluding Swift
         shell: bash
-        env:
-          CPP_DB: ${{ fromJson(steps.analysis.outputs.db-locations).cpp }}
-          CSHARP_DB: ${{ fromJson(steps.analysis.outputs.db-locations).csharp }}
-          GO_DB: ${{ fromJson(steps.analysis.outputs.db-locations).go }}
-          JAVA_DB: ${{ fromJson(steps.analysis.outputs.db-locations).java }}
-          JAVASCRIPT_DB: ${{ fromJson(steps.analysis.outputs.db-locations).javascript }}
-          PYTHON_DB: ${{ fromJson(steps.analysis.outputs.db-locations).python }}
-          RUBY_DB: ${{ fromJson(steps.analysis.outputs.db-locations).ruby }}
         run: |
-          if [[ ! -d "$CPP_DB" ]] || [[ ! "$CPP_DB" == "$RUNNER_TEMP/customDbLocation/"* ]]; then
+          CPP_DB=${{ fromJson(steps.analysis.outputs.db-locations).cpp }}
+          if [[ ! -d $CPP_DB ]] || [[ ! $CPP_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
             echo "Did not create a database for CPP, or created it in the wrong location."
             exit 1
           fi
-          if [[ ! -d "$CSHARP_DB" ]] || [[ ! "$CSHARP_DB" == "$RUNNER_TEMP/customDbLocation/"* ]]; then
+          CSHARP_DB=${{ fromJson(steps.analysis.outputs.db-locations).csharp }}
+          if [[ ! -d $CSHARP_DB ]] || [[ ! $CSHARP_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
             echo "Did not create a database for C Sharp, or created it in the wrong location."
             exit 1
           fi
-          if [[ ! -d "$GO_DB" ]] || [[ ! "$GO_DB" == "$RUNNER_TEMP/customDbLocation/"* ]]; then
+          GO_DB=${{ fromJson(steps.analysis.outputs.db-locations).go }}
+          if [[ ! -d $GO_DB ]] || [[ ! $GO_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
             echo "Did not create a database for Go, or created it in the wrong location."
             exit 1
           fi
-          if [[ ! -d "$JAVA_DB" ]] || [[ ! "$JAVA_DB" == "$RUNNER_TEMP/customDbLocation/"* ]]; then
+          JAVA_DB=${{ fromJson(steps.analysis.outputs.db-locations).java }}
+          if [[ ! -d $JAVA_DB ]] || [[ ! $JAVA_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
             echo "Did not create a database for Java, or created it in the wrong location."
             exit 1
           fi
-          if [[ ! -d "$JAVASCRIPT_DB" ]] || [[ ! "$JAVASCRIPT_DB" == "$RUNNER_TEMP/customDbLocation/"* ]]; then
+          JAVASCRIPT_DB=${{ fromJson(steps.analysis.outputs.db-locations).javascript }}
+          if [[ ! -d $JAVASCRIPT_DB ]] || [[ ! $JAVASCRIPT_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
             echo "Did not create a database for Javascript, or created it in the wrong location."
             exit 1
           fi
-          if [[ ! -d "$PYTHON_DB" ]] || [[ ! "$PYTHON_DB" == "$RUNNER_TEMP/customDbLocation/"* ]]; then
+          PYTHON_DB=${{ fromJson(steps.analysis.outputs.db-locations).python }}
+          if [[ ! -d $PYTHON_DB ]] || [[ ! $PYTHON_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
             echo "Did not create a database for Python, or created it in the wrong location."
             exit 1
           fi
-          if [[ ! -d "$RUBY_DB" ]] || [[ ! "$RUBY_DB" == "$RUNNER_TEMP/customDbLocation/"* ]]; then
+          RUBY_DB=${{ fromJson(steps.analysis.outputs.db-locations).ruby }}
+          if [[ ! -d $RUBY_DB ]] || [[ ! $RUBY_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
             echo "Did not create a database for Ruby, or created it in the wrong location."
             exit 1
           fi
@@ -149,10 +147,9 @@ jobs:
       - name: Check language autodetect for Swift on macOS
         if: runner.os == 'macOS'
         shell: bash
-        env:
-          SWIFT_DB: ${{ fromJson(steps.analysis.outputs.db-locations).swift }}
         run: |
-          if [[ ! -d "$SWIFT_DB" ]] || [[ ! "$SWIFT_DB" == "$RUNNER_TEMP/customDbLocation/"* ]]; then
+          SWIFT_DB=${{ fromJson(steps.analysis.outputs.db-locations).swift }}
+          if [[ ! -d $SWIFT_DB ]] || [[ ! $SWIFT_DB == ${{ runner.temp }}/customDbLocation/* ]]; then
             echo "Did not create a database for Swift, or created it in the wrong location."
             exit 1
           fi

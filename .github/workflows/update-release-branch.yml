@@ -52,14 +52,14 @@ jobs:
     - name: debug logging
       env:
         VERSION: ${{ steps.versions.outputs.version }}
-        MAJOR_VERSION_DBG: ${{ steps.versions.outputs.major_version }}
-        LATEST_TAG_DBG: ${{ steps.versions.outputs.latest_tag }}
+        MAJOR_VERSION_OUT: ${{ steps.versions.outputs.major_version }}
+        LATEST_TAG_OUT: ${{ steps.versions.outputs.latest_tag }}
         BACKPORT_SOURCE_BRANCH: ${{ steps.branches.outputs.backport_source_branch }}
         BACKPORT_TARGET_BRANCHES: ${{ steps.branches.outputs.backport_target_branches }}
       run: |
         echo "version: $VERSION"
-        echo "major_version: $MAJOR_VERSION_DBG"
-        echo "latest_tag: $LATEST_TAG_DBG"
+        echo "major_version: $MAJOR_VERSION_OUT"
+        echo "latest_tag: $LATEST_TAG_OUT"
         echo "backport_source_branch: $BACKPORT_SOURCE_BRANCH"
         echo "backport_target_branches: $BACKPORT_TARGET_BRANCHES"
 
@@ -152,6 +152,6 @@ jobs:
         python .github/update-release-branch.py \
           --github-token "$GITHUB_TOKEN" \
           --repository-nwo "$REPOSITORY_NWO" \
-          --source-branch "${SOURCE_BRANCH}" \
-          --target-branch "${TARGET_BRANCH}" \
+          --source-branch ${SOURCE_BRANCH} \
+          --target-branch ${TARGET_BRANCH} \
           --conductor ${GITHUB_ACTOR}

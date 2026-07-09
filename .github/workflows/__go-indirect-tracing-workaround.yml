@@ -47,8 +47,7 @@ jobs:
         id: prepare-test
         uses: ./.github/actions/prepare-test
         with:
-          version: ${{ matrix.version }}
-          use-all-platform-bundle: 'false'
+          version: ${{ matrix.versionuses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5tform-bundle: 'false'
           setup-kotlin: 'true'
       - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
