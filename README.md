@@ -18,6 +18,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 | upload-sarif/codeql-bundle-v2.25.1 | [`upload-sarif/codeql-bundle-v2.25.1`](https://github.com/chainguard-actions/github-codeql-action/tree/upload-sarif/codeql-bundle-v2.25.1) | — |
 | v2 | [`v2`](https://github.com/chainguard-actions/github-codeql-action/tree/v2) | [`b8d3b6e`](https://github.com/github/codeql-action/commit/b8d3b6e8af63cde30bdc382c0bc28114f4346c88) |
 | v2.28.1 | [`v2.28.1`](https://github.com/chainguard-actions/github-codeql-action/tree/v2.28.1) | [`b8d3b6e`](https://github.com/github/codeql-action/commit/b8d3b6e8af63cde30bdc382c0bc28114f4346c88) |
+| v4.32.4 | [`v4.32.4`](https://github.com/chainguard-actions/github-codeql-action/tree/v4.32.4) | [`89a39a4`](https://github.com/github/codeql-action/commit/89a39a4e59826350b863aa6b6252a07ad50cf83e) |
 | v4.35.1 | [`v4.35.1`](https://github.com/chainguard-actions/github-codeql-action/tree/v4.35.1) | [`c10b806`](https://github.com/github/codeql-action/commit/c10b8064de6f491fea524254123dbe5e09572f13) |
 | v4.35.2 | [`v4.35.2`](https://github.com/chainguard-actions/github-codeql-action/tree/v4.35.2) | [`95e58e9`](https://github.com/github/codeql-action/commit/95e58e9a2cdfd71adc6e0353d5c52f41a045d225) |
 
