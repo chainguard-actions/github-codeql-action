@@ -61,10 +61,11 @@ jobs:
         id: getVersion
         run: |
           VERSION="v$(jq '.version' -r 'package.json')"
-          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
           short_sha="${GITHUB_SHA:0:8}"
-          NEW_BRANCH="mergeback/${VERSION}-to-${BASE_BRANCH}-${short_sha}"
-          echo "newBranch=${NEW_BRANCH}" >> $GITHUB_OUTPUT
+          safe_base_branch=$(printf '%s' "$BASE_BRANCH" | tr -d '\n\r')
+          NEW_BRANCH="mergeback/${VERSION}-to-${safe_base_branch}-${short_sha}"
+          echo "newBranch=${NEW_BRANCH}" >> "$GITHUB_OUTPUT"
           LATEST_RELEASE_BRANCH=$(git branch -r | grep -E "origin/releases/v[0-9]+$" | sed 's/origin\///g' | sort -V | tail -1 | xargs)
           echo "latest_release_branch=${LATEST_RELEASE_BRANCH}" >> $GITHUB_OUTPUT
 
@@ -124,10 +125,10 @@ jobs:
         env:
           PARTIAL_CHANGELOG: "${{ runner.temp }}/partial_changelog.md"
         run: |
-          python .github/workflows/script/prepare_changelog.py CHANGELOG.md > $PARTIAL_CHANGELOG
+          python .github/workflows/script/prepare_changelog.py CHANGELOG.md > "$PARTIAL_CHANGELOG"
 
           echo "::group::Partial CHANGELOG"
-          cat $PARTIAL_CHANGELOG
+          cat "$PARTIAL_CHANGELOG"
           echo "::endgroup::"
 
       - name: Generate token

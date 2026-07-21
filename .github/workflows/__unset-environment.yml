@@ -103,39 +103,38 @@ jobs:
         with:
           upload-database: false
       - env:
-          DB_LOCATIONS: ${{ steps.analysis.outputs.db-locations }}
+          CPP_DB: ${{ fromJson(steps.analysis.outputs.db-locations).cpp }}
+          CSHARP_DB: ${{ fromJson(steps.analysis.outputs.db-locations).csharp }}
+          GO_DB: ${{ fromJson(steps.analysis.outputs.db-locations).go }}
+          JAVA_DB: ${{ fromJson(steps.analysis.outputs.db-locations).java }}
+          JAVASCRIPT_DB: ${{ fromJson(steps.analysis.outputs.db-locations).javascript }}
+          PYTHON_DB: ${{ fromJson(steps.analysis.outputs.db-locations).python }}
         run: |
-          CPP_DB="$(echo "$DB_LOCATIONS" | jq -r '.cpp')"
           if [[ ! -d "$CPP_DB" ]] || [[ ! "$CPP_DB" == "${RUNNER_TEMP}/customDbLocation/cpp" ]]; then
             echo "::error::Did not create a database for CPP, or created it in the wrong location." \
               "Expected location was '${RUNNER_TEMP}/customDbLocation/cpp' but actual was '${CPP_DB}'"
             exit 1
           fi
-          CSHARP_DB="$(echo "$DB_LOCATIONS" | jq -r '.csharp')"
           if [[ ! -d "$CSHARP_DB" ]] || [[ ! "$CSHARP_DB" == "${RUNNER_TEMP}/customDbLocation/csharp" ]]; then
             echo "::error::Did not create a database for C Sharp, or created it in the wrong location." \
               "Expected location was '${RUNNER_TEMP}/customDbLocation/csharp' but actual was '${CSHARP_DB}'"
             exit 1
           fi
-          GO_DB="$(echo "$DB_LOCATIONS" | jq -r '.go')"
           if [[ ! -d "$GO_DB" ]] || [[ ! "$GO_DB" == "${RUNNER_TEMP}/customDbLocation/go" ]]; then
             echo "::error::Did not create a database for Go, or created it in the wrong location." \
               "Expected location was '${RUNNER_TEMP}/customDbLocation/go' but actual was '${GO_DB}'"
             exit 1
           fi
-          JAVA_DB="$(echo "$DB_LOCATIONS" | jq -r '.java')"
           if [[ ! -d "$JAVA_DB" ]] || [[ ! "$JAVA_DB" == "${RUNNER_TEMP}/customDbLocation/java" ]]; then
             echo "::error::Did not create a database for Java, or created it in the wrong location." \
               "Expected location was '${RUNNER_TEMP}/customDbLocation/java' but actual was '${JAVA_DB}'"
             exit 1
           fi
-          JAVASCRIPT_DB="$(echo "$DB_LOCATIONS" | jq -r '.javascript')"
           if [[ ! -d "$JAVASCRIPT_DB" ]] || [[ ! "$JAVASCRIPT_DB" == "${RUNNER_TEMP}/customDbLocation/javascript" ]]; then
             echo "::error::Did not create a database for Javascript, or created it in the wrong location." \
               "Expected location was '${RUNNER_TEMP}/customDbLocation/javascript' but actual was '${JAVASCRIPT_DB}'"
             exit 1
           fi
-          PYTHON_DB="$(echo "$DB_LOCATIONS" | jq -r '.python')"
           if [[ ! -d "$PYTHON_DB" ]] || [[ ! "$PYTHON_DB" == "${RUNNER_TEMP}/customDbLocation/python" ]]; then
             echo "::error::Did not create a database for Python, or created it in the wrong location." \
               "Expected location was '${RUNNER_TEMP}/customDbLocation/python' but actual was '${PYTHON_DB}'"

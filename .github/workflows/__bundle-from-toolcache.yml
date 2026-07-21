@@ -61,7 +61,6 @@ jobs:
       - name: Install @actions/tool-cache
         run: npm install @actions/tool-cache@3
       - name: Check toolcache contains CodeQL
-        continue-on-error: true
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           script: |
@@ -74,7 +73,7 @@ jobs:
         uses: ./../action/setup-codeql
         with:
           tools: ${{ steps.prepare-test.outputs.tools-url }}
-      - name: Check CodeQL is installed within the toolcache
+      - name: Check CodeQL in toolcache
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         with:
           script: |
