@@ -78,11 +78,9 @@ jobs:
 
           # Generate a new branch name for the mergeback PR
           short_sha="${GITHUB_SHA:0:8}"
-          safe_base_branch="$(printf '%s' "$BASE_BRANCH" | tr -d '\n\r')"
-          safe_version="$(printf '%s' "$VERSION" | tr -d '\n\r')"
-          NEW_BRANCH="mergeback/${safe_version}-to-${safe_base_branch}-${short_sha}"
-          safe_new_branch="$(printf '%s' "$NEW_BRANCH" | tr -d '\n\r')"
-          echo "new-branch=${safe_new_branch}" >> $GITHUB_OUTPUT
+          NEW_BRANCH="mergeback/${VERSION}-to-${BASE_BRANCH}-${short_sha}"
+          safe_new_branch="$(printf '%s' "${NEW_BRANCH}" | tr -d '\n\r')"
+          echo "new-branch=${safe_new_branch}" >> "$GITHUB_OUTPUT"
 
           # Create the mergeback branch
           git checkout -b "${NEW_BRANCH}"

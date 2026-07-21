@@ -48,7 +48,7 @@ jobs:
     - name: Ensure release branch exists
       run: |
         echo "MAJOR_VERSION ${MAJOR_VERSION}"
-        RELEASE_BRANCH="releases/${MAJOR_VERSION}"
+        RELEASE_BRANCH=releases/${MAJOR_VERSION}
         if git checkout "$RELEASE_BRANCH" > /dev/null 2>&1; then
             echo "Branch $RELEASE_BRANCH already exists"
             echo ""
@@ -67,13 +67,15 @@ jobs:
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         REPOSITORY_NWO: ${{ github.repository }}
+        SOURCE_BRANCH_VAL: ${{ env.REF_NAME }}
+        TARGET_BRANCH_VAL: ${{ env.MAJOR_VERSION }}
       run: |
         echo "SOURCE_BRANCH=${REF_NAME}"
         echo "TARGET_BRANCH=releases/${MAJOR_VERSION}"
         npx tsx ./pr-checks/update-release-branch.ts \
           --repository-nwo "$REPOSITORY_NWO" \
-          --source-branch "$REF_NAME" \
-          --target-branch "releases/${MAJOR_VERSION}" \
+          --source-branch "$SOURCE_BRANCH_VAL" \
+          --target-branch "releases/$TARGET_BRANCH_VAL" \
           --is-primary-release \
           --conductor "$GITHUB_ACTOR"
 
@@ -117,6 +119,6 @@ jobs:
         echo "TARGET_BRANCH=${TARGET_BRANCH}"
         npx tsx ./pr-checks/update-release-branch.ts \
           --repository-nwo "$REPOSITORY_NWO" \
-          --source-branch "$SOURCE_BRANCH" \
-          --target-branch "$TARGET_BRANCH" \
+          --source-branch "${SOURCE_BRANCH}" \
+          --target-branch "${TARGET_BRANCH}" \
           --conductor "$GITHUB_ACTOR"

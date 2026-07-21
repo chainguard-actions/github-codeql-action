@@ -55,10 +55,10 @@ jobs:
           setup-kotlin: 'true'
       - name: Add a file to the database cluster directory
         env:
-          RUNNER_TEMP: ${{ runner.temp }}
+          RUNNER_TEMP_DIR: ${{ runner.temp }}
         run: |
-          mkdir -p "$RUNNER_TEMP/customDbLocation/javascript"
-          touch "$RUNNER_TEMP/customDbLocation/javascript/a-file-to-clean-up.txt"
+          mkdir -p "$RUNNER_TEMP_DIR/customDbLocation/javascript"
+          touch "$RUNNER_TEMP_DIR/customDbLocation/javascript/a-file-to-clean-up.txt"
 
       - uses: ./../action/init
         id: init
@@ -70,9 +70,9 @@ jobs:
 
       - name: Validate file cleaned up
         env:
-          RUNNER_TEMP: ${{ runner.temp }}
+          RUNNER_TEMP_DIR: ${{ runner.temp }}
         run: |
-          if [[ -f "$RUNNER_TEMP/customDbLocation/javascript/a-file-to-clean-up.txt" ]]; then
+          if [[ -f "$RUNNER_TEMP_DIR/customDbLocation/javascript/a-file-to-clean-up.txt" ]]; then
             echo "File was not cleaned up"
             exit 1
           fi
