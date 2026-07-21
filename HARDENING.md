@@ -8,36 +8,62 @@
 
 **Test Policy SHA:** `843adf9e4b8f85d0c08b27b9d0b09dd094b54702`
 
-**Harden Agent Version:** `1`
+**Harden Agent Version:** `2`
 
-Action **github--codeql-action/codeql-bundle-v2.26.0** was hardened automatically. 3 finding(s) were identified and resolved across 3 iteration(s).
+Action **github--codeql-action/codeql-bundle-v2.26.0** was hardened automatically. 5 finding(s) were identified and resolved across 2 iteration(s).
 
 ## Findings Fixed
 
 ### script-injection (severity: high)
 
-Rule (a) violation: The 'Change SARIF file extension' step directly interpolates ${{ runner.temp }} inside a run: shell command. Any ${{ ... }} expression in a run: block is a script-injection risk because the value is substituted by the YAML template engine before the shell sees it. Offending line: `run: mv ${{ runner.temp }}/results/javascript.sarif ${{ runner.temp }}/results/javascript.sarif.json`
+Rule (a) violation: Direct ${{ }} expression interpolation inside run: shell commands. In the 'Update current release branch' step, `${{ github.repository }}`, `${{ env.REF_NAME }}`, and `${{ env.MAJOR_VERSION }}` are interpolated directly into a python CLI invocation. In the 'Update older release branch' (backport job) step, `${{ github.repository }}` is again interpolated directly. GitHub Actions substitutes these expressions before the shell sees them, enabling script injection if any value contains shell metacharacters.
 
 Locations:
 
-- `.github/workflows/__upload-sarif.yml:155`
+- `.github/workflows/update-release-branch.yml:62`
+- `.github/workflows/update-release-branch.yml:63`
+- `.github/workflows/update-release-branch.yml:64`
+- `.github/workflows/update-release-branch.yml:99`
 
 ### script-injection (severity: high)
 
-Rule (a) violation: The 'Print release information' step directly interpolates ${{ steps.versions.outputs.version }}, ${{ steps.versions.outputs.major_version }}, ${{ steps.versions.outputs.latest_tag }}, ${{ steps.branches.outputs.backport_source_branch }}, and ${{ steps.branches.outputs.backport_target_branches }} inside a run: shell command block. These steps.*.outputs.* expressions are substituted by the YAML template engine before the shell sees them.
+Rule (a) violation: Direct ${{ steps.proxy.outputs.proxy_host }}, ${{ steps.proxy.outputs.proxy_port }}, and ${{ steps.proxy.outputs.proxy_urls }} are interpolated directly inside a run: block's echo commands. The `steps.*.outputs.*` context is in the untrusted-input list; GitHub Actions substitutes these before the shell runs them, enabling injection if output values contain shell metacharacters.
 
 Locations:
 
-- `.github/workflows/prepare-release.yml:65`
+- `.github/workflows/__start-proxy.yml:70`
+- `.github/workflows/__start-proxy.yml:71`
+- `.github/workflows/__start-proxy.yml:72`
 
 ### script-injection (severity: high)
 
-Rule (a) violation: Two run: blocks in update-release-branch.yml directly interpolate ${{ github.repository }}, ${{ env.REF_NAME }}, and ${{ env.MAJOR_VERSION }} inside shell commands. The 'Update current release branch' step uses `--repository-nwo ${{ github.repository }}`, `--source-branch '${{ env.REF_NAME }}'`, and `--target-branch 'releases/${{ env.MAJOR_VERSION }}'`. The 'Update older release branch' step uses `--repository-nwo ${{ github.repository }}`. These expressions are substituted by the YAML template engine before the shell sees them.
+Rule (a) violation: Direct ${{ steps.versions.outputs.version }}, ${{ steps.versions.outputs.major_version }}, ${{ steps.versions.outputs.latest_tag }}, ${{ steps.branches.outputs.backport_source_branch }}, and ${{ steps.branches.outputs.backport_target_branches }} are interpolated directly inside a run: block's echo commands. The `steps.*.outputs.*` context is in the untrusted-input list; GitHub Actions substitutes these before the shell runs them.
 
 Locations:
 
-- `.github/workflows/update-release-branch.yml:60`
-- `.github/workflows/update-release-branch.yml:100`
+- `.github/workflows/prepare-release.yml:68`
+- `.github/workflows/prepare-release.yml:69`
+- `.github/workflows/prepare-release.yml:70`
+- `.github/workflows/prepare-release.yml:71`
+- `.github/workflows/prepare-release.yml:72`
+
+### script-injection (severity: high)
+
+Rule (a) violation: `${{ runner.temp }}` is interpolated directly inside a run: shell command (`mv ${{ runner.temp }}/results/javascript.sarif ${{ runner.temp }}/results/javascript.sarif.json`). Per the check rules, `runner.*` flows through YAML template substitution before the shell sees it and is a script-injection finding.
+
+Locations:
+
+- `.github/workflows/__upload-sarif.yml:148`
+
+### script-injection (severity: high)
+
+Rule (a) violation: `${{ runner.temp }}` is interpolated directly inside run: shell commands (`mkdir -p "${{ runner.temp }}/customDbLocation/javascript"`, `touch "${{ runner.temp }}/..."`, and `if [[ -f "${{ runner.temp }}/..." ]]`). Per the check rules, `runner.*` flows through YAML template substitution before the shell sees it and is a script-injection finding.
+
+Locations:
+
+- `.github/workflows/__cleanup-db-cluster-dir.yml:51`
+- `.github/workflows/__cleanup-db-cluster-dir.yml:52`
+- `.github/workflows/__cleanup-db-cluster-dir.yml:62`
 
 ## Iteration Notes
 
@@ -47,10 +73,24 @@ Locations:
 
 **Notes:**
 
-Fixed three script-injection findings across three workflow files:
-1. hardened/action/.github/workflows/__upload-sarif.yml (line 155): Moved `${{ runner.temp }}` into a step env var `RUNNER_TEMP` and referenced it as `$RUNNER_TEMP` in the shell command.
-2. hardened/action/.github/workflows/prepare-release.yml (line 65): Moved all five `${{ steps.*.outputs.* }}` expressions into a step-level `env:` block and referenced them as plain shell variables.
-3. hardened/action/.github/workflows/update-release-branch.yml (lines 60 and 100): Moved `${{ github.repository }}` into a step-level `env:` block as `GH_REPOSITORY` in both the 'Update current release branch' and 'Update older release branch' steps. Also replaced `${{ env.REF_NAME }}` and `${{ env.MAJOR_VERSION }}` with direct shell variable references since those are already defined in the job-level env block.
+Fixed all 5 script-injection findings across 5 workflow files:
+
+1. `.github/workflows/update-release-branch.yml` (lines 62-64, 99):
+   - 'Update current release branch' step: moved `${{ github.repository }}` to `GH_REPOSITORY` env var; `${{ env.REF_NAME }}` and `${{ env.MAJOR_VERSION }}` were already available as job-level env vars `$REF_NAME` and `$MAJOR_VERSION`, so the `${{ env.* }}` interpolations were replaced with plain `$REF_NAME`/`$MAJOR_VERSION` references.
+   - 'Update older release branch' step: moved `${{ github.repository }}` to `GH_REPOSITORY` env var.
+
+2. `.github/workflows/__start-proxy.yml` (lines 70-72):
+   - 'Print proxy outputs' step: moved `${{ steps.proxy.outputs.proxy_host }}`, `${{ steps.proxy.outputs.proxy_port }}`, and `${{ steps.proxy.outputs.proxy_urls }}` to `PROXY_HOST`, `PROXY_PORT`, `PROXY_URLS` env vars.
+
+3. `.github/workflows/prepare-release.yml` (lines 68-72):
+   - 'Print release information' step: moved all five `${{ steps.*.outputs.* }}` expressions to dedicated env vars (`VERSION`, `MAJOR_VERSION`, `LATEST_TAG`, `BACKPORT_SOURCE_BRANCH`, `BACKPORT_TARGET_BRANCHES`).
+
+4. `.github/workflows/__upload-sarif.yml` (line 148):
+   - 'Change SARIF file extension' step: moved `${{ runner.temp }}` to `RUNNER_TEMP_DIR` env var.
+
+5. `.github/workflows/__cleanup-db-cluster-dir.yml` (lines 51-52, 62):
+   - 'Add a file to the database cluster directory' step: moved `${{ runner.temp }}` to `RUNNER_TEMP_DIR` env var.
+   - 'Validate file cleaned up' step: moved `${{ runner.temp }}` to `RUNNER_TEMP_DIR` env var.
 
 ### Iteration 2
 
@@ -58,13 +98,11 @@ Fixed three script-injection findings across three workflow files:
 
 **Notes:**
 
-Fixed all 8 script-injection findings across 7 workflow files by moving ${{ }} expressions out of run: shell scripts and into step-level env: blocks. For ${{ steps.proxy.outputs.* }} values, they are now referenced as $PROXY_HOST, $PROXY_PORT, $PROXY_URLS environment variables. For ${{ runner.temp }}, it is now referenced as $RUNNER_TEMP_DIR. For ${{ fromJson(steps.analysis.outputs.db-locations).LANG }} expressions, the entire db-locations JSON string is passed via DB_LOCATIONS env var and parsed in the shell using python3 -c 'import sys,json; print(json.load(sys.stdin).get("lang",""))'. The remaining ${{ steps.proxy.outputs.* }} references in if: conditions are safe as they are evaluated by the GitHub Actions expression engine, not the shell.
-
-### Iteration 3
-
-**Fixes applied:** script-injection, github-env-injection
-
-**Notes:**
-
-Fixed all four findings: (1) Quoted unquoted shell variables in update-release-branch.yml git/python/echo commands; (2) Added newline sanitization (printf + tr -d '\n\r') before writing NEW_BRANCH to GITHUB_OUTPUT in post-release-mergeback.yml; (3) Added newline sanitization before writing NEW_BRANCH to GITHUB_OUTPUT in rollback-release.yml; (4) Quoted all unquoted variables in [[ ]] conditional tests in __multi-language-autodetect.yml (both the main language check and the Swift check).
+Fixed script injection in 6 workflow files by moving `${{ fromJson(steps.analysis.outputs.db-locations).* }}` expressions from `run:` shell blocks into `env:` blocks:
+- __ruby.yml: Moved RUBY_DB to env: block
+- __rust.yml: Moved RUST_DB to env: block
+- __swift-autobuild.yml: Moved SWIFT_DB to env: block
+- __swift-custom-build.yml: Moved SWIFT_DB to env: block
+- __unset-environment.yml: Moved CPP_DB, CSHARP_DB, GO_DB, JAVA_DB, JAVASCRIPT_DB, PYTHON_DB to env: block
+- __multi-language-autodetect.yml: Moved all DB variables and CUSTOM_DB_LOCATION (from runner.temp) to env: blocks on both run steps. Shell scripts now reference these as properly double-quoted environment variables.
 

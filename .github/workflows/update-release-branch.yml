@@ -48,19 +48,19 @@ jobs:
     - name: Ensure release branch exists
       run: |
         echo "MAJOR_VERSION ${MAJOR_VERSION}"
-        RELEASE_BRANCH="releases/${MAJOR_VERSION}"
-        if git checkout "$RELEASE_BRANCH" > /dev/null 2>&1; then
+        RELEASE_BRANCH=releases/${MAJOR_VERSION}
+        if git checkout $RELEASE_BRANCH > /dev/null 2>&1; then
             echo "Branch $RELEASE_BRANCH already exists"
             echo ""
         else
             echo "Creating $RELEASE_BRANCH branch"
-            git checkout -b "${RELEASE_BRANCH}" "${LATEST_TAG}"
-            git push --set-upstream origin "${RELEASE_BRANCH}"
+            git checkout -b ${RELEASE_BRANCH} ${LATEST_TAG}
+            git push --set-upstream origin ${RELEASE_BRANCH}
             git branch --show-current
             echo ""
         fi
         echo "Returning to branch: ${REF_NAME}"
-        git checkout "${REF_NAME}"
+        git checkout ${REF_NAME}
 
     - name: Update current release branch
       if: github.event_name == 'workflow_dispatch'
@@ -68,14 +68,14 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GH_REPOSITORY: ${{ github.repository }}
       run: |
-        echo "SOURCE_BRANCH=${REF_NAME}"
-        echo "TARGET_BRANCH=releases/${MAJOR_VERSION}"
+        echo SOURCE_BRANCH=${REF_NAME}
+        echo TARGET_BRANCH=releases/${MAJOR_VERSION}
         python .github/update-release-branch.py \
           --repository-nwo "$GH_REPOSITORY" \
           --source-branch "$REF_NAME" \
           --target-branch "releases/$MAJOR_VERSION" \
           --is-primary-release \
-          --conductor "${GITHUB_ACTOR}"
+          --conductor ${GITHUB_ACTOR}
 
   backport:
     timeout-minutes: 45
@@ -113,10 +113,10 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         GH_REPOSITORY: ${{ github.repository }}
       run: |
-        echo "SOURCE_BRANCH=${SOURCE_BRANCH}"
-        echo "TARGET_BRANCH=${TARGET_BRANCH}"
+        echo SOURCE_BRANCH=${SOURCE_BRANCH}
+        echo TARGET_BRANCH=${TARGET_BRANCH}
         python .github/update-release-branch.py \
           --repository-nwo "$GH_REPOSITORY" \
-          --source-branch "${SOURCE_BRANCH}" \
-          --target-branch "${TARGET_BRANCH}" \
-          --conductor "${GITHUB_ACTOR}"
+          --source-branch ${SOURCE_BRANCH} \
+          --target-branch ${TARGET_BRANCH} \
+          --conductor ${GITHUB_ACTOR}

@@ -15,7 +15,7 @@ jobs:
         run: |
           echo "outcome: $OUTCOME"
           if [ "$OUTCOME" != "failure" ]; then
-            echo "FAIL: expected action to fail (exit 1) but got outcome '$OUTCOME'"
+            echo "FAIL: expected action to fail (outcome='failure') but got '$OUTCOME'"
             exit 1
           fi
-          echo "PASS: action correctly exited with failure as expected for a stub"
+          echo "PASS: stub action correctly exited with failure"

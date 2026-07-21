@@ -73,9 +73,8 @@ jobs:
           upload-database: false
       - name: Check database
         env:
-          DB_LOCATIONS: ${{ steps.analysis.outputs.db-locations }}
+          RUBY_DB: ${{ fromJson(steps.analysis.outputs.db-locations).ruby }}
         run: |
-          RUBY_DB=$(echo "$DB_LOCATIONS" | python3 -c "import sys,json; print(json.load(sys.stdin).get('ruby',''))")
           if [[ ! -d "$RUBY_DB" ]]; then
             echo "Did not create a database for Ruby."
             exit 1
