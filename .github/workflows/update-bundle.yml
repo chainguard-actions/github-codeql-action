@@ -1,5 +1,9 @@
 name: Update default CodeQL bundle
 
+permissions:
+  contents: write
+  pull-requests: write
+
 on:
   release:
     # From https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#release
@@ -26,7 +30,7 @@ jobs:
           GITHUB_CONTEXT: '${{ toJson(github) }}'
         run: echo "$GITHUB_CONTEXT"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Update git config
         run: |

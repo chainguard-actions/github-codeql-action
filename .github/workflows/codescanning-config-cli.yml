@@ -1,6 +1,9 @@
 # Tests that the generated code scanning config file contains the expected contents
 
 name: Code-Scanning config CLI tests
+permissions:
+  contents: read
+  security-events: write
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -46,7 +49,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - name: Check out repository
-      uses: actions/checkout@v4
+      uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
     - name: Prepare test
       id: prepare-test
       uses: ./.github/actions/prepare-test

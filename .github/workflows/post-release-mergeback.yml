@@ -6,6 +6,10 @@
 #    Typically, this is two commits – one to update the version number and one to update dependencies.
 name: Tag release and merge back
 
+permissions:
+  contents: write
+  pull-requests: write
+
 on:
   workflow_dispatch:
     inputs:
@@ -36,10 +40,10 @@ jobs:
           GITHUB_CONTEXT: '${{ toJson(github) }}'
         run: echo "${GITHUB_CONTEXT}"
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0  # ensure we have all tags and can push commits
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
 
       - name: Update git config
         run: |
@@ -48,12 +52,16 @@ jobs:
 
       - name: Get version and new branch
         id: getVersion
+        env:
+          BASE_BRANCH_INPUT: ${{ github.event.inputs.baseBranch || 'main' }}
         run: |
           VERSION="v$(jq '.version' -r 'package.json')"
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           short_sha="${GITHUB_SHA:0:8}"
-          NEW_BRANCH="mergeback/${VERSION}-to-${BASE_BRANCH}-${short_sha}"
-          echo "newBranch=${NEW_BRANCH}" >> $GITHUB_OUTPUT
+          safe_base_branch="$(printf '%s' "$BASE_BRANCH_INPUT" | tr -d '\n\r')"
+          NEW_BRANCH="mergeback/${VERSION}-to-${safe_base_branch}-${short_sha}"
+          safe_new_branch="$(printf '%s' "$NEW_BRANCH" | tr -d '\n\r')"
+          echo "newBranch=${safe_new_branch}" >> $GITHUB_OUTPUT
           LATEST_RELEASE_BRANCH=$(git branch -r | grep -E "origin/releases/v[0-9]+$" | sed 's/origin\///g' | sort -V | tail -1 | xargs)
           echo "latest_release_branch=${LATEST_RELEASE_BRANCH}" >> $GITHUB_OUTPUT
 

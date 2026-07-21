@@ -39,12 +39,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Setup Python on macOS
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         if: runner.os == 'macOS' && matrix.version == 'stable-v2.14.6'
         with:
           python-version: '3.11'
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test
@@ -59,7 +59,7 @@ jobs:
       # Swift is not supported on Ubuntu so we manually exclude it from the list here
           languages: cpp,csharp,go,java,javascript,python,ruby
           tools: ${{ steps.prepare-test.outputs.tools-url }}
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: '>=1.21.0'
       - name: Build code
@@ -70,38 +70,40 @@ jobs:
         with:
           upload-database: false
       - shell: bash
+        env:
+          DB_LOCATIONS: ${{ steps.analysis.outputs.db-locations }}
         run: |
-          CPP_DB="${{ fromJson(steps.analysis.outputs.db-locations).cpp }}"
+          CPP_DB="$(echo "$DB_LOCATIONS" | jq -r '.cpp')"
           if [[ ! -d "$CPP_DB" ]] || [[ ! "$CPP_DB" == "${RUNNER_TEMP}/customDbLocation/cpp" ]]; then
             echo "::error::Did not create a database for CPP, or created it in the wrong location." \
               "Expected location was '${RUNNER_TEMP}/customDbLocation/cpp' but actual was '${CPP_DB}'"
             exit 1
           fi
-          CSHARP_DB="${{ fromJson(steps.analysis.outputs.db-locations).csharp }}"
+          CSHARP_DB="$(echo "$DB_LOCATIONS" | jq -r '.csharp')"
           if [[ ! -d "$CSHARP_DB" ]] || [[ ! "$CSHARP_DB" == "${RUNNER_TEMP}/customDbLocation/csharp" ]]; then
             echo "::error::Did not create a database for C Sharp, or created it in the wrong location." \
               "Expected location was '${RUNNER_TEMP}/customDbLocation/csharp' but actual was '${CSHARP_DB}'"
             exit 1
           fi
-          GO_DB="${{ fromJson(steps.analysis.outputs.db-locations).go }}"
+          GO_DB="$(echo "$DB_LOCATIONS" | jq -r '.go')"
           if [[ ! -d "$GO_DB" ]] || [[ ! "$GO_DB" == "${RUNNER_TEMP}/customDbLocation/go" ]]; then
             echo "::error::Did not create a database for Go, or created it in the wrong location." \
               "Expected location was '${RUNNER_TEMP}/customDbLocation/go' but actual was '${GO_DB}'"
             exit 1
           fi
-          JAVA_DB="${{ fromJson(steps.analysis.outputs.db-locations).java }}"
+          JAVA_DB="$(echo "$DB_LOCATIONS" | jq -r '.java')"
           if [[ ! -d "$JAVA_DB" ]] || [[ ! "$JAVA_DB" == "${RUNNER_TEMP}/customDbLocation/java" ]]; then
             echo "::error::Did not create a database for Java, or created it in the wrong location." \
               "Expected location was '${RUNNER_TEMP}/customDbLocation/java' but actual was '${JAVA_DB}'"
             exit 1
           fi
-          JAVASCRIPT_DB="${{ fromJson(steps.analysis.outputs.db-locations).javascript }}"
+          JAVASCRIPT_DB="$(echo "$DB_LOCATIONS" | jq -r '.javascript')"
           if [[ ! -d "$JAVASCRIPT_DB" ]] || [[ ! "$JAVASCRIPT_DB" == "${RUNNER_TEMP}/customDbLocation/javascript" ]]; then
             echo "::error::Did not create a database for Javascript, or created it in the wrong location." \
               "Expected location was '${RUNNER_TEMP}/customDbLocation/javascript' but actual was '${JAVASCRIPT_DB}'"
             exit 1
           fi
-          PYTHON_DB="${{ fromJson(steps.analysis.outputs.db-locations).python }}"
+          PYTHON_DB="$(echo "$DB_LOCATIONS" | jq -r '.python')"
           if [[ ! -d "$PYTHON_DB" ]] || [[ ! "$PYTHON_DB" == "${RUNNER_TEMP}/customDbLocation/python" ]]; then
             echo "::error::Did not create a database for Python, or created it in the wrong location." \
               "Expected location was '${RUNNER_TEMP}/customDbLocation/python' but actual was '${PYTHON_DB}'"

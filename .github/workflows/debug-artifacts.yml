@@ -1,5 +1,9 @@
 # Checks logs, SARIF, and database bundle debug artifacts exist.
 name: PR Check - Debug artifact upload
+permissions:
+  contents: read
+  security-events: write
+  actions: read
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 on:
@@ -37,13 +41,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test
         with:
           version: ${{ matrix.version }}
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
         with:
           go-version: ^1.13.1
       - uses: ./../action/init
@@ -67,7 +71,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
       - name: Check expected artifacts exist
         shell: bash
         run: |
