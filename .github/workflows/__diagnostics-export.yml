@@ -47,12 +47,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Setup Python on macOS
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        uses: actions/setup-python@v5
         if: runner.os == 'macOS' && matrix.version == 'stable-v2.14.6'
         with:
           python-version: '3.11'
       - name: Check out repository
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@v4
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test
@@ -82,13 +82,13 @@ jobs:
           output: ${{ runner.temp }}/results
           upload-database: false
       - name: Upload SARIF
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@v4
         with:
           name: diagnostics-export-${{ matrix.os }}-${{ matrix.version }}.sarif.json
           path: ${{ runner.temp }}/results/javascript.sarif
           retention-days: 7
       - name: Check diagnostics appear in SARIF
-        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b # v7
+        uses: actions/github-script@v7
         env:
           SARIF_PATH: ${{ runner.temp }}/results/javascript.sarif
         with:

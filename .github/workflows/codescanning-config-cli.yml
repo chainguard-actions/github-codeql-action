@@ -19,8 +19,6 @@ on:
     - cron: '0 5 * * *'
   workflow_dispatch: {}
 
-permissions: {}
-
 jobs:
   code-scanning-config-tests:
     continue-on-error: true
@@ -48,7 +46,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - name: Check out repository
-      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      uses: actions/checkout@v4
     - name: Prepare test
       id: prepare-test
       uses: ./.github/actions/prepare-test

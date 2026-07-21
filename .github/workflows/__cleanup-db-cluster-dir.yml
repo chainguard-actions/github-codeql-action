@@ -37,12 +37,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Setup Python on macOS
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        uses: actions/setup-python@v5
         if: runner.os == 'macOS' && matrix.version == 'stable-v2.14.6'
         with:
           python-version: '3.11'
       - name: Check out repository
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@v4
       - name: Prepare test
         id: prepare-test
         uses: ./.github/actions/prepare-test
@@ -52,8 +52,8 @@ jobs:
           setup-kotlin: 'true'
       - name: Add a file to the database cluster directory
         run: |
-          mkdir -p "$RUNNER_TEMP/customDbLocation/javascript"
-          touch "$RUNNER_TEMP/customDbLocation/javascript/a-file-to-clean-up.txt"
+          mkdir -p "${{ runner.temp }}/customDbLocation/javascript"
+          touch "${{ runner.temp }}/customDbLocation/javascript/a-file-to-clean-up.txt"
 
       - uses: ./../action/init
         id: init
@@ -65,7 +65,7 @@ jobs:
 
       - name: Validate file cleaned up
         run: |
-          if [[ -f "$RUNNER_TEMP/customDbLocation/javascript/a-file-to-clean-up.txt" ]]; then
+          if [[ -f "${{ runner.temp }}/customDbLocation/javascript/a-file-to-clean-up.txt" ]]; then
             echo "File was not cleaned up"
             exit 1
           fi

@@ -1,4 +1,4 @@
-name: Test stub action always fails
+name: Test stub action fails as expected
 on:
   workflow_dispatch:
 jobs:
@@ -18,4 +18,4 @@ jobs:
             echo "FAIL: expected outcome 'failure' but got '$OUTCOME'"
             exit 1
           fi
-          echo "PASS: stub action correctly exited with failure"
+          echo "PASS: stub action correctly exits with failure"
