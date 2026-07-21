@@ -1,4 +1,4 @@
-name: Test stub action fails as expected
+name: Test CodeQL stub fails as expected
 on:
   workflow_dispatch:
 jobs:

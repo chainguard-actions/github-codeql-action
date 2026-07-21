@@ -13,10 +13,6 @@ on:
     # to filter pre-release attribute.
     types: [published]
 
-permissions:
-  contents: write
-  pull-requests: write
-
 jobs:
   update-bundle:
     if: github.event.release.prerelease && startsWith(github.event.release.tag_name, 'codeql-bundle-')
@@ -30,7 +26,7 @@ jobs:
           GITHUB_CONTEXT: '${{ toJson(github) }}'
         run: echo "$GITHUB_CONTEXT"
 
-      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/checkout@v4
 
       - name: Update git config
         run: |

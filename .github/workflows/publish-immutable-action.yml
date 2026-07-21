@@ -18,7 +18,7 @@ jobs:
         env:
           RELEASE_NAME: ${{ github.event.release.name }}
         run: |
-          echo "Release name: $RELEASE_NAME"
+          echo "Release name: ${{ github.event.release.name }}"
           if [[ $RELEASE_NAME == v* ]]; then
             echo "This is a CodeQL Action release. Create an Immutable Action"
             echo "is-action-release=true" >> $GITHUB_OUTPUT
@@ -28,8 +28,8 @@ jobs:
           fi
       - name: Checking out
         if: steps.check.outputs.is-action-release == 'true'
-        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        uses: actions/checkout@v4
       - name: Publish
         if: steps.check.outputs.is-action-release == 'true'
         id: publish
-        uses: actions/publish-immutable-action@4bc8754ffc40f27910afb20287dbbbb675a4e978 # v0.0.4
+        uses: actions/publish-immutable-action@v0.0.4

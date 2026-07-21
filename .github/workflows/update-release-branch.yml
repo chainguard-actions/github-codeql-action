@@ -11,10 +11,6 @@ on:
     branches:
       - releases/*
 
-permissions:
-  contents: write
-  pull-requests: write
-
 jobs:
 
   prepare:
@@ -27,7 +23,7 @@ jobs:
       backport_source_branch: ${{ steps.branches.outputs.backport_source_branch }}
       backport_target_branches: ${{ steps.branches.outputs.backport_target_branches }}
     steps:
-    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0  # Need full history for calculation of diffs
     - uses: ./.github/actions/release-initialise
@@ -50,18 +46,12 @@ jobs:
         latest_tag: ${{ steps.versions.outputs.latest_tag }}
 
     - name: debug logging
-      env:
-        VERSION: ${{ steps.versions.outputs.version }}
-        MAJOR_VERSION_OUT: ${{ steps.versions.outputs.major_version }}
-        LATEST_TAG_OUT: ${{ steps.versions.outputs.latest_tag }}
-        BACKPORT_SOURCE_BRANCH: ${{ steps.branches.outputs.backport_source_branch }}
-        BACKPORT_TARGET_BRANCHES: ${{ steps.branches.outputs.backport_target_branches }}
       run: |
-        echo "version: $VERSION"
-        echo "major_version: $MAJOR_VERSION_OUT"
-        echo "latest_tag: $LATEST_TAG_OUT"
-        echo "backport_source_branch: $BACKPORT_SOURCE_BRANCH"
-        echo "backport_target_branches: $BACKPORT_TARGET_BRANCHES"
+        echo 'version: ${{ steps.versions.outputs.version }}'
+        echo 'major_version: ${{ steps.versions.outputs.major_version }}'
+        echo 'latest_tag: ${{ steps.versions.outputs.latest_tag }}'
+        echo 'backport_source_branch: ${{ steps.branches.outputs.backport_source_branch }}'
+        echo 'backport_target_branches: ${{ steps.branches.outputs.backport_target_branches }}'
 
   update:
     timeout-minutes: 45
@@ -74,7 +64,7 @@ jobs:
       MAJOR_VERSION: "${{ needs.prepare.outputs.major_version }}"
       LATEST_TAG: "${{ needs.prepare.outputs.latest_tag }}"
     steps:
-    - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+    - uses: actions/checkout@v4
       with:
         fetch-depth: 0  # Need full history for calculation of diffs
     - uses: ./.github/actions/release-initialise
@@ -100,17 +90,14 @@ jobs:
 
     - name: Update current release branch
       if: github.event_name == 'workflow_dispatch'
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        REPOSITORY_NWO: ${{ github.repository }}
       run: |
         echo SOURCE_BRANCH=${REF_NAME}
         echo TARGET_BRANCH=releases/${MAJOR_VERSION}
         python .github/update-release-branch.py \
-          --github-token "$GITHUB_TOKEN" \
-          --repository-nwo "$REPOSITORY_NWO" \
-          --source-branch "$REF_NAME" \
-          --target-branch "releases/$MAJOR_VERSION" \
+          --github-token ${{ secrets.GITHUB_TOKEN }} \
+          --repository-nwo ${{ github.repository }} \
+          --source-branch '${{ env.REF_NAME }}' \
+          --target-branch 'releases/${{ env.MAJOR_VERSION }}' \
           --is-primary-release \
           --conductor ${GITHUB_ACTOR}
 
@@ -136,22 +123,19 @@ jobs:
         private-key: ${{ secrets.AUTOMATION_PRIVATE_KEY }}
 
     - name: Checkout
-      uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      uses: actions/checkout@v4
       with:
         fetch-depth: 0  # Need full history for calculation of diffs
         token: ${{ steps.app-token.outputs.token }}
     - uses: ./.github/actions/release-initialise
 
     - name: Update older release branch
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        REPOSITORY_NWO: ${{ github.repository }}
       run: |
         echo SOURCE_BRANCH=${SOURCE_BRANCH}
         echo TARGET_BRANCH=${TARGET_BRANCH}
         python .github/update-release-branch.py \
-          --github-token "$GITHUB_TOKEN" \
-          --repository-nwo "$REPOSITORY_NWO" \
+          --github-token ${{ secrets.GITHUB_TOKEN }} \
+          --repository-nwo ${{ github.repository }} \
           --source-branch ${SOURCE_BRANCH} \
           --target-branch ${TARGET_BRANCH} \
           --conductor ${GITHUB_ACTOR}
