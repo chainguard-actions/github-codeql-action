@@ -76,9 +76,8 @@ jobs:
           upload-database: false
       - name: Check database
         env:
-          DB_LOCATIONS: ${{ steps.analysis.outputs.db-locations }}
+          RUST_DB: ${{ fromJson(steps.analysis.outputs.db-locations).rust }}
         run: |
-          RUST_DB="$(echo "$DB_LOCATIONS" | jq -r '.rust')"
           if [[ ! -d "$RUST_DB" ]]; then
             echo "Did not create a database for Rust."
             exit 1

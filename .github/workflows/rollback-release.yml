@@ -79,8 +79,7 @@ jobs:
           # Generate a new branch name for the mergeback PR
           short_sha="${GITHUB_SHA:0:8}"
           NEW_BRANCH="mergeback/${VERSION}-to-${BASE_BRANCH}-${short_sha}"
-          safe_new_branch=$(printf '%s' "$NEW_BRANCH" | tr -d '\n\r')
-          echo "new-branch=${safe_new_branch}" >> "$GITHUB_OUTPUT"
+          echo "new-branch=${NEW_BRANCH}" >> $GITHUB_OUTPUT
 
           # Create the mergeback branch
           git checkout -b "${NEW_BRANCH}"
@@ -97,10 +96,10 @@ jobs:
           python .github/workflows/script/rollback_changelog.py \
             --target-version "${ROLLBACK_TAG:1}" \
             --rollback-version "${LATEST_TAG:1}" \
-            --new-version "$VERSION" > "$NEW_CHANGELOG"
+            --new-version "$VERSION" > $NEW_CHANGELOG
 
           echo "::group::New CHANGELOG"
-          cat "$NEW_CHANGELOG"
+          cat $NEW_CHANGELOG
           echo "::endgroup::"
 
       - name: Create tags
@@ -129,10 +128,10 @@ jobs:
           NEW_CHANGELOG: "${{ runner.temp }}/new_changelog.md"
           PARTIAL_CHANGELOG: "${{ runner.temp }}/partial_changelog.md"
         run: |
-          python .github/workflows/script/prepare_changelog.py "$NEW_CHANGELOG" > "$PARTIAL_CHANGELOG"
+          python .github/workflows/script/prepare_changelog.py $NEW_CHANGELOG > $PARTIAL_CHANGELOG
 
           echo "::group::Partial CHANGELOG"
-          cat "$PARTIAL_CHANGELOG"
+          cat $PARTIAL_CHANGELOG
           echo "::endgroup::"
 
       - name: Generate token
@@ -170,7 +169,7 @@ jobs:
           NEW_BRANCH: "${{ steps.mergeback-branch.outputs.new-branch }}"
         run: |
           git checkout "${NEW_BRANCH}"
-          mv "${NEW_CHANGELOG}" CHANGELOG.md
+          mv ${NEW_CHANGELOG} CHANGELOG.md
 
       - name: Create mergeback branch and PR
         uses: ./.github/actions/prepare-mergeback-branch
