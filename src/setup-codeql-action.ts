@@ -1,0 +1,228 @@
+import * as core from "@actions/core";
+
+import { Action, ActionState, runInActions } from "./action-common";
+import {
+  getActionVersion,
+  getOptionalInput,
+  getRequiredInput,
+  getTemporaryDirectory,
+} from "./actions-util";
+import { AnalysisKind, getAnalysisKinds } from "./analyses";
+import { getGitHubVersion } from "./api-client";
+import { CodeQL } from "./codeql";
+import { ComputedInput, getToolsInput } from "./config/inputs";
+import { getRawLanguagesNoAutodetect } from "./config-utils";
+import { EnvVar } from "./environment";
+import { initFeatures } from "./feature-flags";
+import { loadRepositoryProperties } from "./feature-flags/properties";
+import { initCodeQL } from "./init";
+import { Logger } from "./logging";
+import { getRepositoryNwo } from "./repository";
+import { ToolsSource } from "./setup-codeql";
+import {
+  ActionName,
+  InitStatusReport,
+  InitToolsDownloadFields,
+  createStatusReportBase,
+  getActionsStatus,
+  sendStatusReport,
+} from "./status-report";
+import { ToolsDownloadStatusReport } from "./tools-download";
+import {
+  checkDiskUsage,
+  checkForTimeout,
+  checkGitHubVersionInRange,
+  getRequiredEnvParam,
+  initializeEnvironment,
+  ConfigurationError,
+  wrapError,
+  checkActionVersion,
+} from "./util";
+
+/**
+ * Helper function to send a full status report for this action.
+ */
+async function sendCompletedStatusReport(
+  startedAt: Date,
+  toolsInput: ComputedInput | undefined,
+  toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined,
+  toolsFeatureFlagsValid: boolean | undefined,
+  toolsSource: ToolsSource,
+  toolsVersion: string,
+  logger: Logger,
+  error?: Error,
+): Promise<void> {
+  const statusReportBase = await createStatusReportBase(
+    ActionName.SetupCodeQL,
+    getActionsStatus(error),
+    startedAt,
+    undefined,
+    await checkDiskUsage(logger),
+    logger,
+    error?.message,
+    error?.stack,
+  );
+
+  if (statusReportBase === undefined) {
+    return;
+  }
+
+  const initStatusReport: InitStatusReport = {
+    ...statusReportBase,
+    tools_input: toolsInput?.value || "",
+    tools_resolved_version: toolsVersion,
+    tools_source: toolsSource || ToolsSource.Unknown,
+    workflow_languages: "",
+  };
+
+  if (toolsInput !== undefined) {
+    initStatusReport.computed_inputs.tools = toolsInput;
+  }
+
+  const initToolsDownloadFields: InitToolsDownloadFields = {};
+
+  if (toolsDownloadStatusReport?.downloadDurationMs !== undefined) {
+    initToolsDownloadFields.tools_download_duration_ms =
+      toolsDownloadStatusReport.downloadDurationMs;
+  }
+  if (toolsFeatureFlagsValid !== undefined) {
+    initToolsDownloadFields.tools_feature_flags_valid = toolsFeatureFlagsValid;
+  }
+
+  await sendStatusReport({ ...initStatusReport, ...initToolsDownloadFields });
+}
+
+/** The main behaviour of this action. */
+async function run(
+  actionState: ActionState<["Base", "Logger", "Env", "Actions"]>,
+): Promise<void> {
+  // To capture errors appropriately, keep as much code within the try-catch as
+  // possible, and only use safe functions outside.
+  const { logger, startedAt } = actionState;
+
+  let codeql: CodeQL;
+  let toolsInput: ComputedInput | undefined;
+  let toolsDownloadStatusReport: ToolsDownloadStatusReport | undefined;
+  let toolsFeatureFlagsValid: boolean | undefined;
+  let toolsSource: ToolsSource;
+  let toolsVersion: string;
+
+  try {
+    initializeEnvironment(getActionVersion());
+
+    const apiDetails = {
+      auth: getRequiredInput("token"),
+      externalRepoAuth: getOptionalInput("external-repository-token"),
+      url: getRequiredEnvParam("GITHUB_SERVER_URL"),
+      apiURL: getRequiredEnvParam("GITHUB_API_URL"),
+    };
+
+    const gitHubVersion = await getGitHubVersion();
+    checkGitHubVersionInRange(gitHubVersion, logger);
+    checkActionVersion(getActionVersion(), gitHubVersion);
+
+    const repositoryNwo = getRepositoryNwo();
+
+    const features = initFeatures(
+      gitHubVersion,
+      repositoryNwo,
+      getTemporaryDirectory(),
+      logger,
+    );
+
+    // Fetch the values of known repository properties that affect us.
+    const repositoryPropertiesResult = await loadRepositoryProperties(
+      repositoryNwo,
+      logger,
+    );
+    const repositoryProperties = repositoryPropertiesResult.orElse({});
+
+    const actionStateWithFeatures = { ...actionState, features };
+
+    const statusReportBase = await createStatusReportBase(
+      ActionName.SetupCodeQL,
+      "starting",
+      startedAt,
+      undefined,
+      await checkDiskUsage(logger),
+      logger,
+    );
+    if (statusReportBase !== undefined) {
+      await sendStatusReport(statusReportBase);
+    }
+
+    // Get the computed `tools` input.
+    toolsInput = await getToolsInput(
+      actionStateWithFeatures,
+      repositoryProperties,
+    );
+
+    const codeQLDefaultVersionInfo =
+      await features.getEnabledDefaultCliVersions(gitHubVersion.type);
+    toolsFeatureFlagsValid = codeQLDefaultVersionInfo.toolsFeatureFlagsValid;
+    const rawLanguages = getRawLanguagesNoAutodetect(
+      getOptionalInput("languages"),
+    );
+    const analysisKinds = await getAnalysisKinds(logger, features);
+    const initCodeQLResult = await initCodeQL(
+      toolsInput?.value,
+      apiDetails,
+      getTemporaryDirectory(),
+      gitHubVersion.type,
+      codeQLDefaultVersionInfo,
+      rawLanguages,
+      analysisKinds.length === 1 &&
+        analysisKinds[0] === AnalysisKind.CodeScanning,
+      features,
+      logger,
+    );
+    codeql = initCodeQLResult.codeql;
+    toolsDownloadStatusReport = initCodeQLResult.toolsDownloadStatusReport;
+    toolsVersion = initCodeQLResult.toolsVersion;
+    toolsSource = initCodeQLResult.toolsSource;
+
+    core.setOutput("codeql-path", codeql.getPath());
+    core.setOutput("codeql-version", (await codeql.getVersion()).version);
+
+    core.exportVariable(EnvVar.SETUP_CODEQL_ACTION_HAS_RUN, "true");
+  } catch (unwrappedError) {
+    const error = wrapError(unwrappedError);
+    core.setFailed(error.message);
+    const statusReportBase = await createStatusReportBase(
+      ActionName.SetupCodeQL,
+      error instanceof ConfigurationError ? "user-error" : "failure",
+      startedAt,
+      undefined,
+      await checkDiskUsage(logger),
+      logger,
+      error.message,
+      error.stack,
+    );
+    if (statusReportBase !== undefined) {
+      await sendStatusReport(statusReportBase);
+    }
+    return;
+  }
+
+  await sendCompletedStatusReport(
+    startedAt,
+    toolsInput,
+    toolsDownloadStatusReport,
+    toolsFeatureFlagsValid,
+    toolsSource,
+    toolsVersion,
+    logger,
+  );
+}
+
+/** Defines the `setup-codeql` Action. */
+const setupCodeQL: Action = {
+  name: ActionName.SetupCodeQL,
+  run,
+};
+
+/** Run the action and catch any unhandled errors. */
+export async function runWrapper(): Promise<void> {
+  await runInActions(setupCodeQL);
+  await checkForTimeout();
+}
