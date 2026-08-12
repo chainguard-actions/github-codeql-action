@@ -15,6 +15,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 | codeql-bundle-v2.25.6 | [`codeql-bundle-v2.25.6`](https://github.com/chainguard-actions/github-codeql-action/tree/codeql-bundle-v2.25.6) | [`c35d1b1`](https://github.com/github/codeql-action/commit/c35d1b164463ee62a100735382aaaa525c5d3496) |
 | codeql-bundle-v2.26.0 | [`codeql-bundle-v2.26.0`](https://github.com/chainguard-actions/github-codeql-action/tree/codeql-bundle-v2.26.0) | [`f58f0d1`](https://github.com/github/codeql-action/commit/f58f0d11ebf5dedd870fab2f999275f7602cfa46) |
 | codeql-bundle-v2.26.2 | [`codeql-bundle-v2.26.2`](https://github.com/chainguard-actions/github-codeql-action/tree/codeql-bundle-v2.26.2) | [`18420e3`](https://github.com/github/codeql-action/commit/18420e3271f74589575af831a523c833acda327f) |
+| codeql-bundle-v2.26.3 | [`codeql-bundle-v2.26.3`](https://github.com/chainguard-actions/github-codeql-action/tree/codeql-bundle-v2.26.3) | [`c16c0f3`](https://github.com/github/codeql-action/commit/c16c0f3f2812ec4bb3750a5ed64873fe2ce0fbef) |
 | init/v3.35.1 | [`init/v3.35.1`](https://github.com/chainguard-actions/github-codeql-action/tree/init/v3.35.1) | — |
 | upload-sarif/codeql-bundle-v2.25.1 | [`upload-sarif/codeql-bundle-v2.25.1`](https://github.com/chainguard-actions/github-codeql-action/tree/upload-sarif/codeql-bundle-v2.25.1) | — |
 | v2 | [`v2`](https://github.com/chainguard-actions/github-codeql-action/tree/v2) | [`b8d3b6e`](https://github.com/github/codeql-action/commit/b8d3b6e8af63cde30bdc382c0bc28114f4346c88) |
