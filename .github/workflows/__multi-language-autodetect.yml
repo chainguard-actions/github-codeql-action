@@ -1,0 +1,203 @@
+# Warning: This file is generated automatically, and should not be modified.
+# Instead, please modify the template in the pr-checks directory and run:
+#     pr-checks/sync.sh
+# to regenerate this file.
+
+name: PR Check - Multi-language repository
+env:
+  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  GO111MODULE: auto
+on:
+  push:
+    branches:
+      - main
+      - releases/v*
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  merge_group:
+    types:
+      - checks_requested
+  schedule:
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+    inputs:
+      dotnet-version:
+        type: string
+        description: The version of .NET to install
+        required: false
+        default: 9.x
+      go-version:
+        type: string
+        description: The version of Go to install
+        required: false
+        default: '>=1.21.0'
+  workflow_call:
+    inputs:
+      dotnet-version:
+        type: string
+        description: The version of .NET to install
+        required: false
+        default: 9.x
+      go-version:
+        type: string
+        description: The version of Go to install
+        required: false
+        default: '>=1.21.0'
+defaults:
+  run:
+    shell: bash
+concurrency:
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || false }}
+  group: multi-language-autodetect-${{github.ref}}-${{inputs.dotnet-version}}-${{inputs.go-version}}
+jobs:
+  multi-language-autodetect:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            version: stable-v2.19.4
+          - os: macos-latest-xlarge
+            version: stable-v2.19.4
+          - os: ubuntu-latest
+            version: stable-v2.20.7
+          - os: macos-latest-xlarge
+            version: stable-v2.20.7
+          - os: ubuntu-latest
+            version: stable-v2.21.4
+          - os: macos-latest-xlarge
+            version: stable-v2.21.4
+          - os: ubuntu-latest
+            version: stable-v2.22.4
+          - os: macos-latest-xlarge
+            version: stable-v2.22.4
+          - os: ubuntu-latest
+            version: stable-v2.23.9
+          - os: macos-latest-xlarge
+            version: stable-v2.23.9
+          - os: ubuntu-latest
+            version: stable-v2.24.3
+          - os: macos-latest-xlarge
+            version: stable-v2.24.3
+          - os: ubuntu-latest
+            version: default
+          - os: macos-latest-xlarge
+            version: default
+          - os: ubuntu-latest
+            version: linked
+          - os: macos-latest-xlarge
+            version: linked
+          - os: ubuntu-latest
+            version: nightly-latest
+          - os: macos-latest-xlarge
+            version: nightly-latest
+    name: Multi-language repository
+    if: github.triggering_actor != 'dependabot[bot]'
+    permissions:
+      contents: read
+      security-events: read
+    timeout-minutes: 45
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - name: Install .NET
+        uses: actions/setup-dotnet@9a946fdbd5fb07b82b2f5a4466058b876ab72bb2 # v5.3.0
+        with:
+          dotnet-version: ${{ inputs.dotnet-version || '9.x' }}
+      - name: Install Go
+        uses: actions/setup-go@4a3601121dd01d1626a1e23e37211e3254c1c06c # v6.4.0
+        with:
+          go-version: ${{ inputs.go-version || '>=1.21.0' }}
+          cache: false
+      - name: Prepare test
+        id: prepare-test
+        uses: ./.github/actions/prepare-test
+        with:
+          version: ${{ matrix.version }}
+          use-all-platform-bundle: 'false'
+          setup-kotlin: 'true'
+      - name: Install Python 3.13 for older CLI versions
+        # We need Python 3.13 for older CLI versions because they are not compatible with Python 3.14 or newer.
+        # See https://github.com/github/codeql-action/pull/3212
+        if: matrix.version != 'nightly-latest' && matrix.version != 'linked'
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6.2.0
+        with:
+          python-version: '3.13'
+
+      - name: Use Xcode 16
+        if: runner.os == 'macOS' && matrix.version != 'nightly-latest'
+        run: sudo xcode-select -s "/Applications/Xcode_16.app"
+
+      - uses: ./../action/init
+        id: init
+        with:
+          db-location: '${{ runner.temp }}/customDbLocation'
+          languages: ${{ runner.os == 'Linux' && 'cpp,csharp,go,java,javascript,python,ruby' || '' }}
+          tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+      - name: Build code
+        run: ./build.sh
+
+      - uses: ./../action/analyze
+        id: analysis
+        with:
+          upload-database: false
+
+      - name: Check language autodetect for all languages excluding Swift
+        env:
+          RUNNER_TEMP: ${{ runner.temp }}
+          CPP_DB: ${{ fromJson(steps.analysis.outputs.db-locations).cpp }}
+          CSHARP_DB: ${{ fromJson(steps.analysis.outputs.db-locations).csharp }}
+          GO_DB: ${{ fromJson(steps.analysis.outputs.db-locations).go }}
+          JAVA_DB: ${{ fromJson(steps.analysis.outputs.db-locations).java }}
+          JAVASCRIPT_DB: ${{ fromJson(steps.analysis.outputs.db-locations).javascript }}
+          PYTHON_DB: ${{ fromJson(steps.analysis.outputs.db-locations).python }}
+          RUBY_DB: ${{ fromJson(steps.analysis.outputs.db-locations).ruby }}
+        run: |
+          if [[ ! -d "$CPP_DB" ]] || [[ ! "$CPP_DB" == "$RUNNER_TEMP"/customDbLocation/* ]]; then
+            echo "Did not create a database for CPP, or created it in the wrong location."
+            exit 1
+          fi
+          if [[ ! -d "$CSHARP_DB" ]] || [[ ! "$CSHARP_DB" == "$RUNNER_TEMP"/customDbLocation/* ]]; then
+            echo "Did not create a database for C Sharp, or created it in the wrong location."
+            exit 1
+          fi
+          if [[ ! -d "$GO_DB" ]] || [[ ! "$GO_DB" == "$RUNNER_TEMP"/customDbLocation/* ]]; then
+            echo "Did not create a database for Go, or created it in the wrong location."
+            exit 1
+          fi
+          if [[ ! -d "$JAVA_DB" ]] || [[ ! "$JAVA_DB" == "$RUNNER_TEMP"/customDbLocation/* ]]; then
+            echo "Did not create a database for Java, or created it in the wrong location."
+            exit 1
+          fi
+          if [[ ! -d "$JAVASCRIPT_DB" ]] || [[ ! "$JAVASCRIPT_DB" == "$RUNNER_TEMP"/customDbLocation/* ]]; then
+            echo "Did not create a database for Javascript, or created it in the wrong location."
+            exit 1
+          fi
+          if [[ ! -d "$PYTHON_DB" ]] || [[ ! "$PYTHON_DB" == "$RUNNER_TEMP"/customDbLocation/* ]]; then
+            echo "Did not create a database for Python, or created it in the wrong location."
+            exit 1
+          fi
+          if [[ ! -d "$RUBY_DB" ]] || [[ ! "$RUBY_DB" == "$RUNNER_TEMP"/customDbLocation/* ]]; then
+            echo "Did not create a database for Ruby, or created it in the wrong location."
+            exit 1
+          fi
+
+      - name: Check language autodetect for Swift on macOS
+        if: runner.os == 'macOS'
+        env:
+          RUNNER_TEMP: ${{ runner.temp }}
+          SWIFT_DB: ${{ fromJson(steps.analysis.outputs.db-locations).swift }}
+        run: |
+          if [[ ! -d "$SWIFT_DB" ]] || [[ ! "$SWIFT_DB" == "$RUNNER_TEMP"/customDbLocation/* ]]; then
+            echo "Did not create a database for Swift, or created it in the wrong location."
+            exit 1
+          fi
+    env:
+      CODEQL_ACTION_RESOLVE_SUPPORTED_LANGUAGES_USING_CLI: true
+      CODEQL_ACTION_TEST_MODE: true
