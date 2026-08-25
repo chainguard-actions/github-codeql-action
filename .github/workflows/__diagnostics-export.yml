@@ -79,14 +79,11 @@ jobs:
       - uses: ./../action/analyze
         with:
           output: '${{ runner.temp }}/results'
-          upload-database: false
-      - name: Upload SARIF
+          upload-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7IF
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: diagnostics-export-${{ matrix.os }}-${{ matrix.version }}.sarif.json
-          path: '${{ runner.temp }}/results/javascript.sarif'
-          retention-days: 7
-      - name: Check diagnostics appear in SARIF
+          path: '${{ runner.temp }}/results/jav      - name: Check diagnostics appear in SARIF
         uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v8
         env:
           SARIF_PATH: '${{ runner.temp }}/results/javascript.sarif'

@@ -61,7 +61,7 @@ jobs:
         run: npm run lint-ci
 
       - name: Upload sarif
-        uses: github/codeql-action/upload-sarif@ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd # v4
+        uses: github/codeql-action/upload-sarif@db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28 # v4
         if: matrix.os == 'ubuntu-latest' && matrix.node-version == 24
         with:
           sarif_file: eslint.sarif
@@ -85,7 +85,6 @@ jobs:
 
       - name: Checkout repository
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-
       - name: Set up Node.js
         uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
@@ -108,7 +107,6 @@ jobs:
     if: github.triggering_actor != 'dependabot[bot]'
     name: Check Action Node versions
     runs-on: ubuntu-latest
-    timeout-minutes: 45
     env:
       BASE_REF: ${{ github.base_ref }}
 

@@ -48,7 +48,7 @@ jobs:
     - name: Ensure release branch exists
       run: |
         echo "MAJOR_VERSION ${MAJOR_VERSION}"
-        RELEASE_BRANCH=releases/${MAJOR_VERSION}
+        RELEASE_BRANCH="releases/${MAJOR_VERSION}"
         if git checkout "$RELEASE_BRANCH" > /dev/null 2>&1; then
             echo "Branch $RELEASE_BRANCH already exists"
             echo ""
@@ -65,16 +65,16 @@ jobs:
     - name: Update current release branch
       if: github.event_name == 'workflow_dispatch'
       env:
-        GITHUB_TOKEN_VAL: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN_VALUE: ${{ secrets.GITHUB_TOKEN }}
         REPOSITORY_NWO: ${{ github.repository }}
       run: |
         echo SOURCE_BRANCH=${REF_NAME}
         echo TARGET_BRANCH=releases/${MAJOR_VERSION}
         python .github/update-release-branch.py \
-          --github-token "$GITHUB_TOKEN_VAL" \
+          --github-token "$GITHUB_TOKEN_VALUE" \
           --repository-nwo "$REPOSITORY_NWO" \
-          --source-branch "$REF_NAME" \
-          --target-branch "releases/$MAJOR_VERSION" \
+          --source-branch "${REF_NAME}" \
+          --target-branch "releases/${MAJOR_VERSION}" \
           --is-primary-release \
           --conductor "${GITHUB_ACTOR}"
 
@@ -111,13 +111,13 @@ jobs:
 
     - name: Update older release branch
       env:
-        GITHUB_TOKEN_VAL: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN_VALUE: ${{ secrets.GITHUB_TOKEN }}
         REPOSITORY_NWO: ${{ github.repository }}
       run: |
-        echo "SOURCE_BRANCH=${SOURCE_BRANCH}"
-        echo "TARGET_BRANCH=${TARGET_BRANCH}"
+        echo SOURCE_BRANCH="${SOURCE_BRANCH}"
+        echo TARGET_BRANCH="${TARGET_BRANCH}"
         python .github/update-release-branch.py \
-          --github-token "$GITHUB_TOKEN_VAL" \
+          --github-token "$GITHUB_TOKEN_VALUE" \
           --repository-nwo "$REPOSITORY_NWO" \
           --source-branch "${SOURCE_BRANCH}" \
           --target-branch "${TARGET_BRANCH}" \
