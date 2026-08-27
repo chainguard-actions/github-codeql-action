@@ -156,8 +156,8 @@ jobs:
       - name: Change SARIF file extension
         if: contains(matrix.analysis-kinds, 'code-scanning')
         env:
-          RUNNER_TEMP_DIR: ${{ runner.temp }}
-        run: mv "${RUNNER_TEMP_DIR}/results/javascript.sarif" "${RUNNER_TEMP_DIR}/results/javascript.sarif.json"
+          RUNNER_TEMP: ${{ runner.temp }}
+        run: mv "$RUNNER_TEMP/results/javascript.sarif" "$RUNNER_TEMP/results/javascript.sarif.json"
       - name: Upload single non-`.sarif` file
         uses: ./../action/upload-sarif
         id: upload-single-non-sarif

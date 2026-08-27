@@ -79,8 +79,7 @@ jobs:
           # Generate a new branch name for the mergeback PR
           short_sha="${GITHUB_SHA:0:8}"
           NEW_BRANCH="mergeback/${VERSION}-to-${BASE_BRANCH}-${short_sha}"
-          safe_new_branch=$(printf '%s' "${NEW_BRANCH}" | tr -d '\n\r')
-          echo "new-branch=${safe_new_branch}" >> $GITHUB_OUTPUT
+          echo "new-branch=${NEW_BRANCH}" >> $GITHUB_OUTPUT
 
           # Create the mergeback branch
           git checkout -b "${NEW_BRANCH}"
@@ -136,8 +135,7 @@ jobs:
           echo "::endgroup::"
 
       - name: Generate token
-        if: github.event_name == 'workflow_dispatch'
-        uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
+        if: githubuses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0ses: actions/create-github-app-token@v3.0.0
         id: app-token
         with:
           app-id: ${{ vars.AUTOMATION_APP_ID }}

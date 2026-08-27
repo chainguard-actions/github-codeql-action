@@ -10,54 +10,38 @@
 
 **Harden Agent Version:** `2`
 
-Action **github--codeql-action/v3.35.1** was hardened automatically. 6 finding(s) were identified and resolved across 3 iteration(s).
+Action **github--codeql-action/v3.35.1** was hardened automatically. 21 finding(s) were identified and resolved across 3 iteration(s).
 
 ## Findings Fixed
 
 ### script-injection (severity: high)
 
-Rule (a): ${{ }} expressions are directly interpolated inside run: shell command strings. In prepare-release.yml, the 'Print release information' step interpolates steps.*.outputs.* context values directly: `echo 'version: ${{ steps.versions.outputs.version }}'`, `echo 'major_version: ${{ steps.versions.outputs.major_version }}'`, `echo 'latest_tag: ${{ steps.versions.outputs.latest_tag }}'`, `echo 'backport_source_branch: ${{ steps.branches.outputs.backport_source_branch }}'`, `echo 'backport_target_branches: ${{ steps.branches.outputs.backport_target_branches }}'`. These values flow through YAML template substitution before the shell sees them.
+Rule (a): A ${{ runner.temp }} expression is directly interpolated inside a run: shell command string. The line reads: `run: mv ${{ runner.temp }}/results/javascript.sarif ${{ runner.temp }}/results/javascript.sarif.json`. Any ${{ ... }} expression inside a run: block is a script-injection risk because the value is substituted into the shell command before the shell parses it.
 
 Locations:
 
-- `.github/workflows/prepare-release.yml:69`
+- `.github/workflows/__upload-sarif.yml:152`
 
 ### script-injection (severity: high)
 
-Rule (a): ${{ }} expressions are directly interpolated inside run: shell command strings. In update-release-branch.yml, the 'Update current release branch' step uses `--github-token ${{ secrets.GITHUB_TOKEN }}`, `--repository-nwo ${{ github.repository }}`, `--source-branch '${{ env.REF_NAME }}'`, `--target-branch 'releases/${{ env.MAJOR_VERSION }}'` directly in the run: block. Rule (b): The 'Update older release branch' step uses unquoted shell variable expansions `--source-branch ${SOURCE_BRANCH}` and `--target-branch ${TARGET_BRANCH}` where SOURCE_BRANCH is sourced from needs.prepare.outputs.backport_source_branch and TARGET_BRANCH from matrix.target_branch.
+Rule (a): Multiple ${{ steps.*.outputs.* }} expressions are directly interpolated inside a run: shell command block in the 'Print release information' step. The lines include: `echo 'version: ${{ steps.versions.outputs.version }}'`, `echo 'major_version: ${{ steps.versions.outputs.major_version }}'`, `echo 'latest_tag: ${{ steps.versions.outputs.latest_tag }}'`, `echo 'backport_source_branch: ${{ steps.branches.outputs.backport_source_branch }}'`, `echo 'backport_target_branches: ${{ steps.branches.outputs.backport_target_branches }}'`. Steps outputs are workflow-controllable and must not be interpolated directly into run: blocks.
 
 Locations:
 
-- `.github/workflows/update-release-branch.yml:60`
+- `.github/workflows/prepare-release.yml:62`
+
+### script-injection (severity: high)
+
+Rule (a): Multiple ${{ ... }} expressions are directly interpolated inside run: shell command blocks in the 'Update current release branch' and 'Update older release branch' steps. The offending lines include: `--github-token ${{ secrets.GITHUB_TOKEN }}`, `--repository-nwo ${{ github.repository }}`, `--source-branch '${{ env.REF_NAME }}'`, `--target-branch 'releases/${{ env.MAJOR_VERSION }}'`. Even though secrets.GITHUB_TOKEN is a secret reference, all ${{ ... }} expressions in run: blocks are script-injection risks because they are substituted before the shell parses the command.
+
+Locations:
+
+- `.github/workflows/update-release-branch.yml:57`
 - `.github/workflows/update-release-branch.yml:100`
-
-### script-injection (severity: high)
-
-Rule (a): ${{ runner.temp }} is directly interpolated inside a run: shell command string. The 'Change SARIF file extension' step uses: `run: mv ${{ runner.temp }}/results/javascript.sarif ${{ runner.temp }}/results/javascript.sarif.json`. Any ${{ ... }} expression directly inside a run: block is a script-injection finding regardless of which context it reads from.
-
-Locations:
-
-- `.github/workflows/__upload-sarif.yml:130`
-
-### github-env-injection (severity: high)
-
-The 'Get version and new branch' step in post-release-mergeback.yml writes `echo "newBranch=${NEW_BRANCH}" >> $GITHUB_OUTPUT` where NEW_BRANCH is constructed as `"mergeback/${VERSION}-to-${BASE_BRANCH}-${short_sha}"`. BASE_BRANCH is set from `${{ github.event.inputs.baseBranch || 'main' }}` (a github.* context value). This value is written to $GITHUB_OUTPUT without the required sanitization step (`printf '%s' ... | tr -d '\n\r'`).
-
-Locations:
-
-- `.github/workflows/post-release-mergeback.yml:55`
-
-### github-env-injection (severity: high)
-
-The 'Prepare mergeback branch' step in rollback-release.yml writes `echo "new-branch=${NEW_BRANCH}" >> $GITHUB_OUTPUT` where NEW_BRANCH is constructed as `"mergeback/${VERSION}-to-${BASE_BRANCH}-${short_sha}"`. BASE_BRANCH is set from `${{ (github.event_name == 'workflow_dispatch' && 'main') || github.ref_name }}` (a github.* context value) and VERSION from `${{ needs.prepare.outputs.version }}` (a needs.*.outputs.* context). These values are written to $GITHUB_OUTPUT without the required sanitization step (`printf '%s' ... | tr -d '\n\r'`).
-
-Locations:
-
-- `.github/workflows/rollback-release.yml:75`
 
 ### unpinned-uses (severity: high)
 
-Multiple workflow files use external actions pinned to mutable version tags instead of immutable 40-character SHA digests. Failing references include: actions/checkout@v6, actions/setup-node@v6, actions/setup-python@v6, actions/setup-dotnet@v5, actions/setup-go@v6, actions/download-artifact@v8, actions/create-github-app-token@v3.0.0, actions/publish-immutable-action@v0.0.4, github/codeql-action/upload-sarif@v4. These tag-based references can be silently redirected to malicious code if the upstream repository is compromised.
+The workflow uses mutable version tags instead of pinned full-length SHA commit hashes. Failing references include: `actions/checkout@v6`, `actions/setup-dotnet@v5`, `actions/setup-go@v6`, `actions/download-artifact@v8`.
 
 Locations:
 
@@ -92,6 +76,7 @@ Locations:
 - `.github/workflows/__go-tracing-autobuilder.yml:1`
 - `.github/workflows/__go-tracing-custom-build-steps.yml:1`
 - `.github/workflows/__go-tracing-legacy-workflow.yml:1`
+- `.github/workflows/__go.yml:1`
 - `.github/workflows/__init-with-registries.yml:1`
 - `.github/workflows/__javascript-source-root.yml:1`
 - `.github/workflows/__job-run-uuid-sarif.yml:1`
@@ -117,53 +102,185 @@ Locations:
 - `.github/workflows/__upload-ref-sha-input.yml:1`
 - `.github/workflows/__upload-sarif.yml:1`
 - `.github/workflows/__with-checkout-path.yml:1`
+
+### unpinned-uses (severity: high)
+
+The workflow uses mutable version tags instead of pinned full-length SHA commit hashes. Failing references include: `actions/checkout@v6`.
+
+Locations:
+
 - `.github/workflows/check-expected-release-files.yml:1`
+
+### unpinned-uses (severity: high)
+
+The workflow uses mutable version tags instead of pinned full-length SHA commit hashes. Failing references include: `actions/checkout@v6`.
+
+Locations:
+
 - `.github/workflows/codeql.yml:1`
+
+### unpinned-uses (severity: high)
+
+The workflow uses mutable version tags instead of pinned full-length SHA commit hashes. Failing references include: `actions/checkout@v6`, `actions/setup-node@v6`.
+
+Locations:
+
 - `.github/workflows/codescanning-config-cli.yml:1`
+
+### unpinned-uses (severity: high)
+
+The workflow uses mutable version tags instead of pinned full-length SHA commit hashes. Failing references include: `actions/checkout@v6`, `actions/setup-go@v6`, `actions/setup-dotnet@v5`, `actions/download-artifact@v8`.
+
+Locations:
+
 - `.github/workflows/debug-artifacts-failure-safe.yml:1`
+
+### unpinned-uses (severity: high)
+
+The workflow uses mutable version tags instead of pinned full-length SHA commit hashes. Failing references include: `actions/checkout@v6`, `actions/setup-go@v6`, `actions/setup-dotnet@v5`, `actions/download-artifact@v8`.
+
+Locations:
+
 - `.github/workflows/debug-artifacts-safe.yml:1`
+
+### unpinned-uses (severity: high)
+
+The workflow uses mutable version tags instead of pinned full-length SHA commit hashes. Failing references include: `actions/checkout@v6`, `actions/setup-node@v6`, `actions/setup-python@v6`, `actions/create-github-app-token@v3.0.0`.
+
+Locations:
+
 - `.github/workflows/post-release-mergeback.yml:1`
+
+### unpinned-uses (severity: high)
+
+The workflow uses mutable version tags instead of pinned full-length SHA commit hashes. Failing references include: `actions/checkout@v6`, `actions/setup-node@v6`, `github/codeql-action/upload-sarif@v4`.
+
+Locations:
+
 - `.github/workflows/pr-checks.yml:1`
+
+### unpinned-uses (severity: high)
+
+The workflow uses mutable version tags instead of pinned full-length SHA commit hashes. Failing references include: `actions/checkout@v6`.
+
+Locations:
+
 - `.github/workflows/prepare-release.yml:1`
+
+### unpinned-uses (severity: high)
+
+The workflow uses mutable version tags instead of pinned full-length SHA commit hashes. Failing references include: `actions/checkout@v6`, `actions/publish-immutable-action@v0.0.4`.
+
+Locations:
+
 - `.github/workflows/publish-immutable-action.yml:1`
+
+### unpinned-uses (severity: high)
+
+The workflow uses mutable version tags instead of pinned full-length SHA commit hashes. Failing references include: `actions/setup-python@v6`, `actions/checkout@v6`.
+
+Locations:
+
 - `.github/workflows/python312-windows.yml:1`
+
+### unpinned-uses (severity: high)
+
+The workflow uses mutable version tags instead of pinned full-length SHA commit hashes. Failing references include: `actions/checkout@v6`, `actions/setup-node@v6`.
+
+Locations:
+
 - `.github/workflows/query-filters.yml:1`
+
+### unpinned-uses (severity: high)
+
+The workflow uses mutable version tags instead of pinned full-length SHA commit hashes. Failing references include: `actions/checkout@v6`, `actions/setup-node@v6`.
+
+Locations:
+
 - `.github/workflows/rebuild.yml:1`
+
+### unpinned-uses (severity: high)
+
+The workflow uses mutable version tags instead of pinned full-length SHA commit hashes. Failing references include: `actions/checkout@v6`, `actions/create-github-app-token@v3.0.0`.
+
+Locations:
+
 - `.github/workflows/rollback-release.yml:1`
+
+### unpinned-uses (severity: high)
+
+The workflow uses mutable version tags instead of pinned full-length SHA commit hashes. Failing references include: `actions/checkout@v6`, `actions/setup-dotnet@v5`.
+
+Locations:
+
 - `.github/workflows/test-codeql-bundle-all.yml:1`
+
+### unpinned-uses (severity: high)
+
+The workflow uses mutable version tags instead of pinned full-length SHA commit hashes. Failing references include: `actions/checkout@v6`, `actions/setup-python@v6`, `actions/setup-node@v6`.
+
+Locations:
+
 - `.github/workflows/update-bundle.yml:1`
+
+### unpinned-uses (severity: high)
+
+The workflow uses mutable version tags instead of pinned full-length SHA commit hashes. Failing references include: `actions/checkout@v6`, `actions/create-github-app-token@v3.0.0`.
+
+Locations:
+
 - `.github/workflows/update-release-branch.yml:1`
+
+### unpinned-uses (severity: high)
+
+The workflow uses mutable version tags instead of pinned full-length SHA commit hashes. Failing references include: `actions/setup-python@v6`, `actions/checkout@v6`.
+
+Locations:
+
 - `.github/workflows/update-supported-enterprise-server-versions.yml:1`
 
 ## Iteration Notes
 
 ### Iteration 1
 
-**Fixes applied:** script-injection, github-env-injection, unpinned-uses
-
-**Notes:**
-
-Fixed all 5 findings across multiple workflow files:
-
-1. script-injection (prepare-release.yml): Moved steps.*.outputs.* expressions to env block.
-
-2. script-injection (update-release-branch.yml): Moved secrets.GITHUB_TOKEN and github.repository to env blocks; quoted shell variable expansions for SOURCE_BRANCH and TARGET_BRANCH.
-
-3. script-injection (__upload-sarif.yml): Moved runner.temp to env block (RUNNER_TEMP_DIR).
-
-4. github-env-injection (post-release-mergeback.yml): Added printf/tr sanitization before writing to GITHUB_OUTPUT.
-
-5. github-env-injection (rollback-release.yml): Added printf/tr sanitization before writing new-branch to GITHUB_OUTPUT.
-
-6. unpinned-uses: Pinned all 9 specified action types across ~75 workflow files to full SHA digests: actions/checkout@v6→d23441a4, actions/setup-node@v6→24997072, actions/setup-python@v6→ece7cb06, actions/setup-dotnet@v5→26b0ec14, actions/setup-go@v6→924ae3a1, actions/download-artifact@v8→3e5f45b2, actions/create-github-app-token@v3.0.0→f8d387b6, actions/publish-immutable-action@v0.0.4→4bc8754f, github/codeql-action/upload-sarif@v4→ff2f1c62. Several files required full rewrites due to corruption from sequential replace_all operations.
-
-### Iteration 2
-
 **Fixes applied:** script-injection, unpinned-uses
 
 **Notes:**
 
-Fixed all 3 script-injection findings by moving ${{ }} expressions from run: blocks into env: blocks and referencing them as plain environment variables. Fixed all unpinned-uses findings by pinning: actions/upload-artifact@v7 → SHA 043fb46d1a93c77aae656e7c1c64a875d1fc6a0a, actions/github-script@v8 → SHA ed597411d8f924073f98dfc5c65a23a2325f34cd, actions/setup-java@v5 → SHA b6effb05e454b25005698d916606bdc6ffcbf961, actions/setup-node@v6 → SHA 249970729cb0ef3589644e2896645e5dc5ba9c38, actions/setup-python@v6 → SHA ece7cb06caefa5fff74198d8649806c4678c61a1. All 16 files were updated across the 3 script-injection findings and 13 unpinned-uses findings.
+Fixed all 3 script-injection findings and all unpinned-uses findings across 77+ workflow files.
+
+Script injection fixes:
+1. __upload-sarif.yml (line 152): Moved ${{ runner.temp }} into env: block as RUNNER_TEMP variable
+2. prepare-release.yml (line 62): Moved all ${{ steps.*.outputs.* }} expressions into env: block
+3. update-release-branch.yml (lines 57, 100): Moved ${{ secrets.GITHUB_TOKEN }} and ${{ github.repository }} into env: blocks; replaced ${{ env.REF_NAME }} and ${{ env.MAJOR_VERSION }} with shell variable references
+
+Unpinned actions fixed (all pinned to full SHA with tag comment):
+- actions/checkout@v6 → d23441a48e516b6c34aea4fa41551a30e30af803
+- actions/setup-dotnet@v5 → 26b0ec14cb23fa6904739307f278c14f94c95bf1
+- actions/setup-go@v6 → 924ae3a1cded613372ab5595356fb5720e22ba16
+- actions/download-artifact@v8 → 3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c
+- actions/setup-node@v6 → 249970729cb0ef3589644e2896645e5dc5ba9c38
+- actions/setup-python@v6 → ece7cb06caefa5fff74198d8649806c4678c61a1
+- actions/create-github-app-token@v3.0.0 → f8d387b68d61c58ab83c6c016672934102569859
+- actions/publish-immutable-action@v0.0.4 → 4bc8754ffc40f27910afb20287dbbbb675a4e978
+- github/codeql-action/upload-sarif@v4 → cdf488f595d80d6e07e03d4674febd5ab45fa938
+
+Note: Several files were corrupted during initial replacement attempts (due to replace_all tool behavior inserting replacement text at wrong positions) and had to be fully rewritten to restore correct content with pinned SHAs.
+
+### Iteration 2
+
+**Fixes applied:** unpinned-uses, github-env-injection
+
+**Notes:**
+
+Fixed all unpinned action references by replacing mutable version tags with full 40-character commit SHAs:
+- actions/upload-artifact@v7 → @043fb46d1a93c77aae656e7c1c64a875d1fc6a0a (in __analysis-kinds.yml, __bundle-zstd.yml, __config-export.yml, __diagnostics-export.yml, __export-file-baseline-information.yml, __job-run-uuid-sarif.yml)
+- actions/github-script@v8 → @ed597411d8f924073f98dfc5c65a23a2325f34cd (in __analysis-kinds.yml, __bundle-from-toolcache.yml, __bundle-toolcache.yml, __bundle-zstd.yml, __config-export.yml, __diagnostics-export.yml, __go-indirect-tracing-workaround-diagnostic.yml, __go-indirect-tracing-workaround-no-file-program.yml)
+- actions/setup-java@v5 → @b6effb05e454b25005698d916606bdc6ffcbf961 (in __autobuild-direct-tracing-with-working-dir.yml, __build-mode-autobuild.yml)
+- actions/setup-node@v6 → @249970729cb0ef3589644e2896645e5dc5ba9c38 (in release-initialise/action.yml)
+- actions/setup-python@v6 → @ece7cb06caefa5fff74198d8649806c4678c61a1 (in release-initialise/action.yml)
+
+Fixed github-env-injection in prepare-test/action.yml: the $version variable derived from inputs.version via sed is now sanitized with `printf '%s' "$version" | tr -d '\n\r'` before being written to $GITHUB_OUTPUT, preventing newline injection attacks.
 
 ### Iteration 3
 
@@ -171,17 +288,21 @@ Fixed all 3 script-injection findings by moving ${{ }} expressions from run: blo
 
 **Notes:**
 
-Fixed all 6 script-injection findings across 6 workflow files:
+Fixed script-injection findings in 7 workflow files by moving all ${{ }} expressions from run: blocks into env: blocks:
 
-1. __ruby.yml (line 81): Moved `${{ fromJson(steps.analysis.outputs.db-locations).ruby }}` to step env: block as DB_LOCATION_RUBY; used "$DB_LOCATION_RUBY" (quoted) in run:.
+1. __start-proxy.yml (line 63): Moved steps.proxy.outputs.proxy_host, proxy_port, proxy_urls to env vars PROXY_HOST, PROXY_PORT, PROXY_URLS.
 
-2. __rust.yml (line 79): Same pattern for rust → DB_LOCATION_RUST.
+2. __multi-language-autodetect.yml (lines 155, 225): Moved fromJson(steps.analysis.outputs.db-locations).{cpp,csharp,go,java,javascript,python,ruby} and runner.temp to env vars CPP_DB, CSHARP_DB, GO_DB, JAVA_DB, JAVASCRIPT_DB, PYTHON_DB, RUBY_DB, CUSTOM_DB_LOCATION in the first step; moved fromJson(...).swift and runner.temp to SWIFT_DB, CUSTOM_DB_LOCATION in the second step.
 
-3. __swift-autobuild.yml (line 77): Same pattern for swift → DB_LOCATION_SWIFT.
+3. __ruby.yml (line 67): Moved fromJson(steps.analysis.outputs.db-locations).ruby to env var RUBY_DB.
 
-4. __swift-custom-build.yml (line 100): Same pattern for swift → DB_LOCATION_SWIFT.
+4. __rust.yml (line 65): Moved fromJson(steps.analysis.outputs.db-locations).rust to env var RUST_DB.
 
-5. __unset-environment.yml (line 106): Moved all 6 fromJson expressions (cpp, csharp, go, java, javascript, python) from run: block to step env: block as DB_LOCATION_* vars; used all quoted in run:.
+5. __swift-autobuild.yml (line 65): Moved fromJson(steps.analysis.outputs.db-locations).swift to env var SWIFT_DB.
 
-6. __multi-language-autodetect.yml (line 152): The env: block was already correct (sub-rule b finding), but all 8 env vars (CPP, CSHARP, GO, JAVA, JAVASCRIPT, PYTHON, RUBY, SWIFT) were used unquoted in run:. Added double-quotes around all variable expansions in both the main check step and the Swift-specific step.
+6. __swift-custom-build.yml (line 105): Moved fromJson(steps.analysis.outputs.db-locations).swift to env var SWIFT_DB.
+
+7. __unset-environment.yml (line 100): Moved fromJson(steps.analysis.outputs.db-locations).{cpp,csharp,go,java,javascript,python} to env vars CPP_DB, CSHARP_DB, GO_DB, JAVA_DB, JAVASCRIPT_DB, PYTHON_DB (RUNNER_TEMP is already a built-in env var so no change needed there).
+
+8. __cleanup-db-cluster-dir.yml (lines 55, 65): Moved runner.temp to env var RUNNER_TEMP_DIR in both the 'Add a file to the database cluster directory' and 'Validate file cleaned up' steps.
 

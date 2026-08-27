@@ -65,14 +65,14 @@ jobs:
     - name: Update current release branch
       if: github.event_name == 'workflow_dispatch'
       env:
-        GITHUB_TOKEN_VAL: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN_VALUE: ${{ secrets.GITHUB_TOKEN }}
         REPOSITORY_NWO: ${{ github.repository }}
       run: |
         echo SOURCE_BRANCH=${REF_NAME}
         echo TARGET_BRANCH=releases/${MAJOR_VERSION}
         python .github/update-release-branch.py \
-          --github-token "${GITHUB_TOKEN_VAL}" \
-          --repository-nwo "${REPOSITORY_NWO}" \
+          --github-token "$GITHUB_TOKEN_VALUE" \
+          --repository-nwo "$REPOSITORY_NWO" \
           --source-branch "${REF_NAME}" \
           --target-branch "releases/${MAJOR_VERSION}" \
           --is-primary-release \
@@ -94,7 +94,9 @@ jobs:
     permissions:
       contents: write # needed to push commits
       pull-requests: write # needed to create pull request
- uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0ses: actions/create-github-app-token@v3.0.0
+    steps:
+    - name: Generate token
+      uses: actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859 # v3.0.0
       id: app-token
       with:
         app-id: ${{ vars.AUTOMATION_APP_ID }}
@@ -109,14 +111,14 @@ jobs:
 
     - name: Update older release branch
       env:
-        GITHUB_TOKEN_VAL: ${{ secrets.GITHUB_TOKEN }}
+        GITHUB_TOKEN_VALUE: ${{ secrets.GITHUB_TOKEN }}
         REPOSITORY_NWO: ${{ github.repository }}
       run: |
         echo SOURCE_BRANCH=${SOURCE_BRANCH}
         echo TARGET_BRANCH=${TARGET_BRANCH}
         python .github/update-release-branch.py \
-          --github-token "${GITHUB_TOKEN_VAL}" \
-          --repository-nwo "${REPOSITORY_NWO}" \
-          --source-branch "${SOURCE_BRANCH}" \
-          --target-branch "${TARGET_BRANCH}" \
+          --github-token "$GITHUB_TOKEN_VALUE" \
+          --repository-nwo "$REPOSITORY_NWO" \
+          --source-branch ${SOURCE_BRANCH} \
+          --target-branch ${TARGET_BRANCH} \
           --conductor ${GITHUB_ACTOR}

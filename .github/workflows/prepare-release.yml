@@ -76,8 +76,8 @@ jobs:
           BACKPORT_SOURCE_BRANCH: ${{ steps.branches.outputs.backport_source_branch }}
           BACKPORT_TARGET_BRANCHES: ${{ steps.branches.outputs.backport_target_branches }}
         run: |
-          echo "version: ${VERSION}"
-          echo "major_version: ${MAJOR_VERSION}"
-          echo "latest_tag: ${LATEST_TAG}"
-          echo "backport_source_branch: ${BACKPORT_SOURCE_BRANCH}"
-          echo "backport_target_branches: ${BACKPORT_TARGET_BRANCHES}"
+          echo "version: $VERSION"
+          echo "major_version: $MAJOR_VERSION"
+          echo "latest_tag: $LATEST_TAG"
+          echo "backport_source_branch: $BACKPORT_SOURCE_BRANCH"
+          echo "backport_target_branches: $BACKPORT_TARGET_BRANCHES"

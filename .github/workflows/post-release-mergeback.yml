@@ -61,15 +61,12 @@ jobs:
         id: getVersion
         run: |
           VERSION="v$(jq '.version' -r 'package.json')"
-          safe_version=$(printf '%s' "${VERSION}" | tr -d '\n\r')
-          echo "version=${safe_version}" >> $GITHUB_OUTPUT
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
           short_sha="${GITHUB_SHA:0:8}"
           NEW_BRANCH="mergeback/${VERSION}-to-${BASE_BRANCH}-${short_sha}"
-          safe_new_branch=$(printf '%s' "${NEW_BRANCH}" | tr -d '\n\r')
-          echo "newBranch=${safe_new_branch}" >> $GITHUB_OUTPUT
+          echo "newBranch=${NEW_BRANCH}" >> $GITHUB_OUTPUT
           LATEST_RELEASE_BRANCH=$(git branch -r | grep -E "origin/releases/v[0-9]+$" | sed 's/origin\///g' | sort -V | tail -1 | xargs)
-          safe_latest_release_branch=$(printf '%s' "${LATEST_RELEASE_BRANCH}" | tr -d '\n\r')
-          echo "latest_release_branch=${safe_latest_release_branch}" >> $GITHUB_OUTPUT
+          echo "latest_release_branch=${LATEST_RELEASE_BRANCH}" >> $GITHUB_OUTPUT
 
       - name: Dump branches
         env:

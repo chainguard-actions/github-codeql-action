@@ -109,9 +109,8 @@ jobs:
           upload-database: false
       - name: Check database
         env:
-          DB_LOCATION_SWIFT: ${{ fromJson(steps.analysis.outputs.db-locations).swift }}
+          SWIFT_DB: ${{ fromJson(steps.analysis.outputs.db-locations).swift }}
         run: |
-          SWIFT_DB="$DB_LOCATION_SWIFT"
           if [[ ! -d "$SWIFT_DB" ]]; then
             echo "Did not create a database for Swift."
             exit 1
