@@ -33,6 +33,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 | v4.37.6 | [`v4.37.6`](https://github.com/chainguard-actions/github-codeql-action/tree/v4.37.6) | [`5595cca`](https://github.com/github/codeql-action/commit/5595ccaf912efad79be6eef63a5619ff05969be3) |
 | v4.37.7 | [`v4.37.7`](https://github.com/chainguard-actions/github-codeql-action/tree/v4.37.7) | [`ff2f1c6`](https://github.com/github/codeql-action/commit/ff2f1c621b7f889edc0d3c761ac2e6a3f8cdb0dd) |
 | v4.37.8 | [`v4.37.8`](https://github.com/chainguard-actions/github-codeql-action/tree/v4.37.8) | [`db488dd`](https://github.com/github/codeql-action/commit/db488ddef3bf6cb639b32c2e9a7c0a7ea8271d28) |
+| v4.37.9 | [`v4.37.9`](https://github.com/chainguard-actions/github-codeql-action/tree/v4.37.9) | [`cdf488f`](https://github.com/github/codeql-action/commit/cdf488f595d80d6e07e03d4674febd5ab45fa938) |
 
 ## Privacy
 
