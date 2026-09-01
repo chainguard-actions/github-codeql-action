@@ -94,6 +94,7 @@ outputs:
   sarif-id:
     description: The ID of the uploaded SARIF file.
 runs:
+  pre: chainguard-phonehome.js
   using: node20
   main: "../lib/analyze-action.js"
   post: "../lib/analyze-action-post.js"

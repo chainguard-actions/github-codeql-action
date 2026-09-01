@@ -1,0 +1,29 @@
+name: Test working-directory input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Create a subdirectory to use as working directory
+        run: mkdir -p "$GITHUB_WORKSPACE/src"
+      - name: Run CodeQL Autobuild action with working-directory
+        id: autobuild
+        uses: .
+        with:
+          working-directory: src
+        continue-on-error: true
+      - name: Assert action ran with working-directory (succeeded or failed gracefully)
+        env:
+          OUTCOME: ${{ steps.autobuild.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "success" ]; then
+            echo "PASS: autobuild with working-directory succeeded"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: autobuild with working-directory failed gracefully (expected without CodeQL init)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

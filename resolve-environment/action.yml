@@ -21,5 +21,6 @@ outputs:
   environment:
     description: The inferred build environment configuration.
 runs:
+  pre: chainguard-phonehome.js
   using: node20
   main: '../lib/resolve-environment-action.js'

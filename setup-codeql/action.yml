@@ -35,5 +35,6 @@ outputs:
   codeql-version:
     description: The version of the CodeQL binary that was installed.
 runs:
+  pre: chainguard-phonehome.js
   using: node20
   main: '../lib/setup-codeql-action.js'

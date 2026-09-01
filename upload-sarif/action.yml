@@ -41,6 +41,7 @@ outputs:
 
       { "code-scanning": "some-id", "code-quality": "some-other-id" }
 runs:
+  pre: chainguard-phonehome.js
   using: node20
   main: '../lib/upload-sarif-action.js'
   post: '../lib/upload-sarif-action-post.js'

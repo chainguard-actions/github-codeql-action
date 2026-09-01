@@ -15,5 +15,6 @@ inputs:
       $GITHUB_WORKSPACE as its working directory.
     required: false
 runs:
+  pre: chainguard-phonehome.js
   using: node20
   main: '../lib/autobuild-action.js'

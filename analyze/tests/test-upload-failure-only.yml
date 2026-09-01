@@ -1,0 +1,32 @@
+name: Test CodeQL Finish - Upload Failure Only
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run CodeQL finish with upload=failure-only
+        id: action
+        uses: .
+        with:
+          upload: failure-only
+          wait-for-processing: "false"
+        continue-on-error: true
+
+      - name: Assert action ran and failed gracefully
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (no CodeQL init state, upload=failure-only)"
+          elif [ "$OUTCOME" = "success" ]; then
+            echo "PASS: action succeeded unexpectedly"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

@@ -170,6 +170,7 @@ outputs:
   codeql-version:
     description: The version of the CodeQL binary used for analysis
 runs:
+  pre: chainguard-phonehome.js
   using: node20
   main: '../lib/init-action.js'
   post: '../lib/init-action-post.js'

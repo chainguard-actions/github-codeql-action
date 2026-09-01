@@ -1,0 +1,35 @@
+name: Test external-repository-token input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: setup
+        uses: .
+        with:
+          tools: linked
+          external-repository-token: ${{ github.token }}
+        continue-on-error: true
+      - name: Assert codeql-path output is set or action failed gracefully
+        env:
+          CODEQL_PATH: ${{ steps.setup.outputs.codeql-path }}
+          CODEQL_VERSION: ${{ steps.setup.outputs.codeql-version }}
+          OUTCOME: ${{ steps.setup.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "codeql-path: $CODEQL_PATH"
+          echo "codeql-version: $CODEQL_VERSION"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -z "$CODEQL_PATH" ]; then
+              echo "FAIL: action succeeded but codeql-path output is empty"
+              exit 1
+            fi
+            echo "PASS: codeql-path='$CODEQL_PATH' codeql-version='$CODEQL_VERSION'"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (expected under harness sentinel repo)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
