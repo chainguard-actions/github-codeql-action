@@ -2,6 +2,7 @@
   "owner": "github",
   "repo": "codeql-action",
   "version": "v3.35.1",
+  "path": "upload-sarif",
   "commit_sha": "5c8a8a642e79153f5d047b10ec1cba1d1cc65699",
   "url": "https://github.com/github/codeql-action",
   "policy_sha": "d636be7e43ef829af6e853da6b3c7566db9f72fe",

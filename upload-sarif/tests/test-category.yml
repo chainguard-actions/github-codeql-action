@@ -1,4 +1,4 @@
-name: Test basic upload-sarif usage
+name: Test upload-sarif with category input
 on:
   workflow_dispatch:
 jobs:
@@ -37,9 +37,10 @@ jobs:
         with:
           sarif_file: results/results.sarif
           checkout_path: ${{ github.workspace }}
+          category: my-test-category
           wait-for-processing: "false"
 
-      - name: Assert action ran (success or graceful failure on sentinel repo)
+      - name: Assert action ran with category (success or graceful failure on sentinel repo)
         env:
           SARIF_ID: ${{ steps.action.outputs.sarif-id }}
           OUTCOME: ${{ steps.action.outcome }}
@@ -47,7 +48,7 @@ jobs:
           echo "outcome: $OUTCOME"
           echo "sarif-id: $SARIF_ID"
           if [ "$OUTCOME" = "success" ]; then
-            echo "PASS: action succeeded"
+            echo "PASS: action succeeded with category input"
           elif [ "$OUTCOME" = "failure" ]; then
             echo "PASS: action failed gracefully (sentinel repo is not resolvable)"
           else
