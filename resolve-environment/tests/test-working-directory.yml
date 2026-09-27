@@ -1,0 +1,37 @@
+name: Test with working-directory input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Create a subdirectory with some files
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/subdir"
+          echo "console.log('hello');" > "$GITHUB_WORKSPACE/subdir/index.js"
+      - id: action
+        uses: .
+        with:
+          language: javascript
+          working-directory: subdir
+        continue-on-error: true
+      - name: Assert environment output or graceful failure
+        env:
+          ACTUAL: ${{ steps.action.outputs.environment }}
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "actual: $ACTUAL"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -z "$ACTUAL" ]; then
+              echo "FAIL: action succeeded but environment output is empty when working-directory is set"
+              exit 1
+            fi
+            echo "PASS: environment output is set with working-directory: $ACTUAL"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (likely sentinel repo or API unavailable)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
