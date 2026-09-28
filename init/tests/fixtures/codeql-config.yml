@@ -1,0 +1,3 @@
+disable-default-queries: false
+queries:
+  - uses: security-and-quality
