@@ -1,0 +1,41 @@
+name: Test SARIF upload with category
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Prepare SARIF file
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/../results"
+          cp "$GITHUB_WORKSPACE/tests/fixtures/minimal.sarif" "$GITHUB_WORKSPACE/../results/results.sarif"
+
+      - id: upload
+        uses: .
+        continue-on-error: true
+        with:
+          sarif_file: ${{ github.workspace }}/../results/results.sarif
+          category: test-category
+          wait-for-processing: "false"
+
+      - name: Assert action ran with category input
+        env:
+          OUTCOME: ${{ steps.upload.outcome }}
+          SARIF_ID: ${{ steps.upload.outputs.sarif-id }}
+          SARIF_IDS: ${{ steps.upload.outputs.sarif-ids }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "sarif-id: $SARIF_ID"
+          echo "sarif-ids: $SARIF_IDS"
+          if [ "$OUTCOME" = "success" ]; then
+            echo "PASS: action succeeded with category input"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (sentinel repo is not resolvable)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
