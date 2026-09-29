@@ -11,11 +11,13 @@ jobs:
         continue-on-error: true
         with:
           languages: javascript
+          tools: linked
           config: |
             disable-default-queries: false
+          config-file: ''
           queries: security-extended
-          packs: codeql/javascript-queries
-          source-root: .
+          packs: ''
+          db-location: /tmp/codeql-db
       - name: Assert action ran (outputs set or failed gracefully)
         env:
           OUTCOME: ${{ steps.action.outcome }}

@@ -1,4 +1,4 @@
-name: Test CodeQL Init - Debug and Caching Options
+name: Test CodeQL Init - Registries and External Token
 on:
   workflow_dispatch:
 jobs:
@@ -12,13 +12,12 @@ jobs:
         with:
           languages: javascript
           tools: linked
-          debug: 'true'
-          debug-artifact-name: codeql-debug-artifact
-          debug-database-name: codeql-debug-db
-          trap-caching: 'false'
-          dependency-caching: 'false'
-          source-root: '.'
-          setup-python-dependencies: 'false'
+          registries: |
+            - url: https://ghcr.io/v2/
+              packages: '*/*'
+              token: ${{ github.token }}
+          external-repository-token: ${{ github.token }}
+          quality-queries: ''
       - name: Assert action ran (outputs set or failed gracefully)
         env:
           OUTCOME: ${{ steps.action.outcome }}

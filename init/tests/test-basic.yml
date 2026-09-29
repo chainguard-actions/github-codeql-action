@@ -1,4 +1,4 @@
-name: Test CodeQL Init - Basic Usage
+name: Test CodeQL Init - Basic
 on:
   workflow_dispatch:
 jobs:
@@ -13,7 +13,7 @@ jobs:
           languages: javascript
           tools: linked
           build-mode: none
-          ram: '2048'
+          ram: '1024'
           threads: '1'
       - name: Assert action ran (outputs set or failed gracefully)
         env:

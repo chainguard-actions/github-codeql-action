@@ -1,4 +1,4 @@
-name: Test basic upload-sarif usage
+name: Test basic usage
 on:
   workflow_dispatch:
 jobs:
@@ -9,10 +9,10 @@ jobs:
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-      - name: Create minimal SARIF file
+      - name: Create a minimal SARIF file
         run: |
           mkdir -p "$GITHUB_WORKSPACE/results"
-          cat > "$GITHUB_WORKSPACE/results/results.sarif" << 'EOF'
+          cat > "$GITHUB_WORKSPACE/results/results.sarif" <<'EOF'
           {
             "version": "2.1.0",
             "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
@@ -39,7 +39,7 @@ jobs:
           checkout_path: ${{ github.workspace }}
           wait-for-processing: "false"
 
-      - name: Assert action ran (success or graceful failure on sentinel repo)
+      - name: Assert action ran (outputs set, or failed gracefully on the sentinel repo)
         env:
           SARIF_ID: ${{ steps.action.outputs.sarif-id }}
           OUTCOME: ${{ steps.action.outcome }}
