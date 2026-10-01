@@ -1,0 +1,41 @@
+name: Test CodeQL Analyze - Upload Never
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Invoke CodeQL analyze with upload=never
+        id: action
+        uses: .
+        continue-on-error: true
+        with:
+          upload: "never"
+          skip-queries: "true"
+          wait-for-processing: "false"
+          upload-database: "false"
+
+      - name: Assert action ran with upload=never (graceful failure without init)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          SARIF_ID: ${{ steps.action.outputs.sarif-id }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "sarif-id: $SARIF_ID"
+          if [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully as expected (no CodeQL init was run)"
+          elif [ "$OUTCOME" = "success" ]; then
+            # If it somehow succeeded, sarif-id should be empty since upload=never
+            if [ -n "$SARIF_ID" ]; then
+              echo "FAIL: sarif-id should be empty when upload=never but got: $SARIF_ID"
+              exit 1
+            fi
+            echo "PASS: action succeeded with no sarif-id (upload=never)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

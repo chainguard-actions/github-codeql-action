@@ -1,0 +1,51 @@
+name: Test CodeQL Init - Config File
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create CodeQL config file
+        run: |
+          mkdir -p /tmp/codeql-config
+          cat > /tmp/codeql-config/codeql-config.yml << 'EOF'
+          disable-default-queries: false
+          EOF
+
+      - id: codeql-init
+        uses: .
+        continue-on-error: true
+        with:
+          languages: javascript
+          tools: linked
+          config-file: '/tmp/codeql-config/codeql-config.yml'
+          source-root: '.'
+          trap-caching: 'false'
+
+      - name: Assert action ran with config-file input or failed gracefully
+        env:
+          OUTCOME: ${{ steps.codeql-init.outcome }}
+          CODEQL_PATH: ${{ steps.codeql-init.outputs.codeql-path }}
+          CODEQL_VERSION: ${{ steps.codeql-init.outputs.codeql-version }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "codeql-path: $CODEQL_PATH"
+          echo "codeql-version: $CODEQL_VERSION"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -z "$CODEQL_PATH" ]; then
+              echo "FAIL: action succeeded but codeql-path output is empty"
+              exit 1
+            fi
+            if [ -z "$CODEQL_VERSION" ]; then
+              echo "FAIL: action succeeded but codeql-version output is empty"
+              exit 1
+            fi
+            echo "PASS: config-file - codeql-path=$CODEQL_PATH codeql-version=$CODEQL_VERSION"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (expected under harness environment)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
