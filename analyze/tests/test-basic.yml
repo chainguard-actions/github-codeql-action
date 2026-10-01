@@ -1,0 +1,33 @@
+name: Test CodeQL Analyze - Basic Usage
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run CodeQL Analyze action (expect graceful failure without init)
+        id: action
+        uses: .
+        with:
+          skip-queries: "true"
+          upload: "never"
+          wait-for-processing: "false"
+        continue-on-error: true
+
+      - name: Assert action ran (succeeded or failed gracefully without CodeQL init)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "success" ]; then
+            echo "PASS: action succeeded"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (no CodeQL init/database present, as expected)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

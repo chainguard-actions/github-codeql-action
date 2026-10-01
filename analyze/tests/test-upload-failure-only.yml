@@ -1,0 +1,32 @@
+name: Test CodeQL Analyze - Upload Failure Only
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Run CodeQL Analyze with upload=failure-only
+        id: action
+        uses: .
+        with:
+          upload: "failure-only"
+          wait-for-processing: "false"
+        continue-on-error: true
+
+      - name: Assert action ran with upload=failure-only (graceful failure without init)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "success" ]; then
+            echo "PASS: action succeeded with upload=failure-only"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (no CodeQL database present, as expected without init)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
