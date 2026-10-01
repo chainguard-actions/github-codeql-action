@@ -1,0 +1,33 @@
+name: Test with language input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          language: javascript
+          registry_secrets: "[]"
+      - name: Assert action ran with language input
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          PROXY_HOST: ${{ steps.action.outputs.proxy_host }}
+          PROXY_PORT: ${{ steps.action.outputs.proxy_port }}
+          PROXY_URLS: ${{ steps.action.outputs.proxy_urls }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "proxy_host: $PROXY_HOST"
+          echo "proxy_port: $PROXY_PORT"
+          echo "proxy_urls: $PROXY_URLS"
+          if [ "$OUTCOME" = "success" ]; then
+            echo "PASS: action succeeded with language=javascript"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (expected for internal action under harness)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

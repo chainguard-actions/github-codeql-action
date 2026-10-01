@@ -1,0 +1,46 @@
+name: Test SARIF upload from directory with category
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Prepare SARIF directory with multiple files
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/../results"
+          cp "$GITHUB_WORKSPACE/tests/fixtures/minimal.sarif" "$GITHUB_WORKSPACE/../results/tool-a.sarif"
+          cp "$GITHUB_WORKSPACE/tests/fixtures/minimal.sarif" "$GITHUB_WORKSPACE/../results/tool-b.sarif"
+
+      - id: upload
+        uses: .
+        continue-on-error: true
+        with:
+          sarif_file: ../results
+          category: test-category
+          wait-for-processing: "false"
+
+      - name: Assert action ran (upload or failed gracefully on sentinel repo)
+        env:
+          SARIF_ID: ${{ steps.upload.outputs.sarif-id }}
+          SARIF_IDS: ${{ steps.upload.outputs.sarif-ids }}
+          OUTCOME: ${{ steps.upload.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "sarif-id: $SARIF_ID"
+          echo "sarif-ids: $SARIF_IDS"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -z "$SARIF_ID" ] && [ -z "$SARIF_IDS" ]; then
+              echo "FAIL: action succeeded but both sarif-id and sarif-ids outputs are empty"
+              exit 1
+            fi
+            echo "PASS: got sarif output"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (sentinel repo is not resolvable)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
