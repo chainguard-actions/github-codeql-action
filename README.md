@@ -22,6 +22,7 @@ Hardened by [Chainguard](https://www.chainguard.dev) from the upstream action at
 | v2.28.1 | [`v2.28.1`](https://github.com/chainguard-actions/github-codeql-action/tree/v2.28.1) | [`b8d3b6e`](https://github.com/github/codeql-action/commit/b8d3b6e8af63cde30bdc382c0bc28114f4346c88) |
 | v3 | [`v3`](https://github.com/chainguard-actions/github-codeql-action/tree/v3) | [`1190a97`](https://github.com/github/codeql-action/commit/1190a975f95ce23525efb6a3fc21ea29567c1b52) |
 | v3.35.1 | [`v3.35.1`](https://github.com/chainguard-actions/github-codeql-action/tree/v3.35.1) | [`5c8a8a6`](https://github.com/github/codeql-action/commit/5c8a8a642e79153f5d047b10ec1cba1d1cc65699) |
+| v3.36.2 | [`v3.36.2`](https://github.com/chainguard-actions/github-codeql-action/tree/v3.36.2) | [`dd903d2`](https://github.com/github/codeql-action/commit/dd903d2e4f5405488e5ef1422510ee31c8b32357) |
 | v3.37.1 | [`v3.37.1`](https://github.com/chainguard-actions/github-codeql-action/tree/v3.37.1) | [`b7351df`](https://github.com/github/codeql-action/commit/b7351df727350dca84cb9d725d57dcf5bc82ba26) |
 | v3.38.1 | [`v3.38.1`](https://github.com/chainguard-actions/github-codeql-action/tree/v3.38.1) | [`3ea0661`](https://github.com/github/codeql-action/commit/3ea06614dafe36dec890db3446326e0d40ce53d4) |
 | v3.38.2 | [`v3.38.2`](https://github.com/chainguard-actions/github-codeql-action/tree/v3.38.2) | [`1190a97`](https://github.com/github/codeql-action/commit/1190a975f95ce23525efb6a3fc21ea29567c1b52) |
