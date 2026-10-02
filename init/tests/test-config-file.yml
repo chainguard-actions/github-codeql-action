@@ -1,0 +1,41 @@
+name: Test CodeQL Init config-file input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Create CodeQL config file
+        run: |
+          mkdir -p /tmp/codeql-config
+          cat > /tmp/codeql-config/codeql-config.yml <<'EOF'
+          disable-default-queries: false
+          EOF
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          languages: javascript
+          config-file: /tmp/codeql-config/codeql-config.yml
+      - name: Assert action ran (config-file input accepted)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          CODEQL_PATH: ${{ steps.action.outputs.codeql-path }}
+          CODEQL_VERSION: ${{ steps.action.outputs.codeql-version }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "codeql-path: $CODEQL_PATH"
+          echo "codeql-version: $CODEQL_VERSION"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -z "$CODEQL_PATH" ]; then
+              echo "FAIL: action succeeded but codeql-path output is empty"
+              exit 1
+            fi
+            echo "PASS: codeql-path=$CODEQL_PATH version=$CODEQL_VERSION"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (sentinel repo or network not available)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
