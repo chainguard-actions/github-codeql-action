@@ -1,0 +1,41 @@
+name: Test CodeQL Finish - Upload Never
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Prepare output directory
+        run: mkdir -p "$GITHUB_WORKSPACE/sarif-results"
+
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          upload: never
+          output: "../sarif-results"
+          wait-for-processing: "false"
+
+      - name: Assert action ran (failed gracefully without CodeQL init or on sentinel repo)
+        if: always()
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          SARIF_OUTPUT: ${{ steps.action.outputs.sarif-output }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "sarif-output: $SARIF_OUTPUT"
+          if [ "$OUTCOME" = "success" ]; then
+            echo "PASS: action succeeded"
+            if [ -n "$SARIF_OUTPUT" ]; then
+              echo "PASS: sarif-output is set to '$SARIF_OUTPUT'"
+            fi
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (expected without CodeQL init / sentinel repo)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

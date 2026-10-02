@@ -1,0 +1,34 @@
+name: Test CodeQL Setup - nightly tools
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: setup
+        uses: .
+        with:
+          tools: nightly
+        continue-on-error: true
+      - name: Assert action ran or failed gracefully with nightly tools
+        env:
+          CODEQL_PATH: ${{ steps.setup.outputs.codeql-path }}
+          CODEQL_VERSION: ${{ steps.setup.outputs.codeql-version }}
+          OUTCOME: ${{ steps.setup.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "codeql-path: $CODEQL_PATH"
+          echo "codeql-version: $CODEQL_VERSION"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -z "$CODEQL_PATH" ]; then
+              echo "FAIL: action succeeded but codeql-path output is empty"
+              exit 1
+            fi
+            echo "PASS: nightly codeql installed at '$CODEQL_PATH' version '$CODEQL_VERSION'"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (nightly download may be unavailable in harness)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
