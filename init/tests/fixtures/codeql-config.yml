@@ -1,0 +1,4 @@
+disable-default-queries: false
+query-filters:
+  - exclude:
+      tags contain: experimental
