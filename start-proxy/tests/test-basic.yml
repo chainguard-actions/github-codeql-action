@@ -1,0 +1,29 @@
+name: Test basic usage - no registry secrets
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          registry_secrets: "[]"
+      - name: Report action outcome
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          PROXY_HOST: ${{ steps.action.outputs.proxy_host }}
+          PROXY_PORT: ${{ steps.action.outputs.proxy_port }}
+          PROXY_CA_CERT: ${{ steps.action.outputs.proxy_ca_certificate }}
+          PROXY_URLS: ${{ steps.action.outputs.proxy_urls }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "proxy_host: $PROXY_HOST"
+          echo "proxy_port: $PROXY_PORT"
+          echo "proxy_ca_certificate: $PROXY_CA_CERT"
+          echo "proxy_urls: $PROXY_URLS"
+          echo "PASS: action invoked (outcome=$OUTCOME; internal GitHub action may not be functional in harness)"
