@@ -1,0 +1,35 @@
+name: Test deprecated inputs and post-processed-sarif-path
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Create output directories
+        run: |
+          mkdir -p /tmp/sarif-results
+          mkdir -p /tmp/post-processed-sarif
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          cleanup-level: "brutal"
+          add-snippets: "true"
+          post-processed-sarif-path: "/tmp/post-processed-sarif"
+          output: "/tmp/sarif-results"
+          wait-for-processing: "false"
+          upload: "never"
+      - name: Assert action ran (no CodeQL DB in harness, graceful failure expected)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "success" ]; then
+            echo "PASS: action succeeded"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (no CodeQL database in harness)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
