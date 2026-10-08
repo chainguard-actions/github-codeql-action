@@ -1,0 +1,43 @@
+name: Test external-repository-token input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: setup
+        uses: .
+        with:
+          tools: linked
+          external-repository-token: ${{ github.token }}
+      - name: Assert codeql-path output is set
+        env:
+          CODEQL_PATH: ${{ steps.setup.outputs.codeql-path }}
+        run: |
+          echo "codeql-path: $CODEQL_PATH"
+          if [ -z "$CODEQL_PATH" ]; then
+            echo "FAIL: codeql-path output is empty"
+            exit 1
+          fi
+          echo "PASS: codeql-path is set to '$CODEQL_PATH'"
+      - name: Assert codeql-version output is set
+        env:
+          CODEQL_VERSION: ${{ steps.setup.outputs.codeql-version }}
+        run: |
+          echo "codeql-version: $CODEQL_VERSION"
+          if [ -z "$CODEQL_VERSION" ]; then
+            echo "FAIL: codeql-version output is empty"
+            exit 1
+          fi
+          echo "PASS: codeql-version is set to '$CODEQL_VERSION'"
+      - name: Assert codeql binary exists
+        env:
+          CODEQL_PATH: ${{ steps.setup.outputs.codeql-path }}
+        run: |
+          echo "Checking binary at: $CODEQL_PATH"
+          if [ ! -f "$CODEQL_PATH" ]; then
+            echo "FAIL: codeql binary not found at '$CODEQL_PATH'"
+            exit 1
+          fi
+          echo "PASS: codeql binary exists"

@@ -63,11 +63,13 @@ runs:
         fi
 
         if [[ "$VERSION" == *"nightly"* ]]; then
-          version=`echo "$VERSION" | sed -e 's/^.*\-//'`
-          echo "tools-url=https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/codeql-bundle-$version/$artifact_name" >> $GITHUB_OUTPUT
+          raw_version=`echo "$VERSION" | sed -e 's/^.*\-//'`
+          version=$(printf '%s' "$raw_version" | tr -d '\n\r')
+          echo "tools-url=https://github.com/dsp-testing/codeql-cli-nightlies/releases/download/codeql-bundle-$version/$artifact_name" >> "$GITHUB_OUTPUT"
         elif [[ "$VERSION" == *"stable"* ]]; then
-          version=`echo "$VERSION" | sed -e 's/^.*\-//'`
-          echo "tools-url=https://github.com/github/codeql-action/releases/download/codeql-bundle-$version/$artifact_name" >> $GITHUB_OUTPUT
+          raw_version=`echo "$VERSION" | sed -e 's/^.*\-//'`
+          version=$(printf '%s' "$raw_version" | tr -d '\n\r')
+          echo "tools-url=https://github.com/github/codeql-action/releases/download/codeql-bundle-$version/$artifact_name" >> "$GITHUB_OUTPUT"
         else
           echo "::error::Unrecognized version specified!"
           exit 1
