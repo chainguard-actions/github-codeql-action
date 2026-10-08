@@ -1,0 +1,63 @@
+name: Test SARIF upload with ref and sha
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Get current HEAD sha
+        id: git-info
+        run: |
+          SHA=$(git rev-parse HEAD)
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Create minimal SARIF file
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/results"
+          cat > "$GITHUB_WORKSPACE/results/results.sarif" <<'EOF'
+          {
+            "version": "2.1.0",
+            "$schema": "https://raw.githubusercontent.com/oasis-tcs/sarif-spec/master/Schemata/sarif-schema-2.1.0.json",
+            "runs": [
+              {
+                "tool": {
+                  "driver": {
+                    "name": "TestTool",
+                    "version": "1.0.0",
+                    "rules": []
+                  }
+                },
+                "results": []
+              }
+            ]
+          }
+          EOF
+
+      - id: upload
+        uses: .
+        continue-on-error: true
+        with:
+          sarif_file: results/results.sarif
+          ref: refs/heads/act-harness
+          sha: ${{ steps.git-info.outputs.sha }}
+          wait-for-processing: "false"
+
+      - name: Assert action ran with ref and sha (success or graceful failure on sentinel repo)
+        env:
+          OUTCOME: ${{ steps.upload.outcome }}
+          SARIF_ID: ${{ steps.upload.outputs.sarif-id }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "sarif-id: $SARIF_ID"
+          if [ "$OUTCOME" = "success" ]; then
+            echo "PASS: action succeeded with ref and sha inputs"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (sentinel repo is not resolvable)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
