@@ -1,0 +1,10 @@
+{
+  "status": "unbundlable",
+  "entries": [
+    {
+      "path": "../lib/setup-codeql-action.js",
+      "status": "unbundlable",
+      "reason": "entry path is absolute or escapes the action root"
+    }
+  ]
+}
