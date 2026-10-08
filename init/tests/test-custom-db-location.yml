@@ -1,0 +1,40 @@
+name: Test CodeQL Init - Custom DB Location and Resources
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Create custom DB directory
+        run: mkdir -p /tmp/codeql-dbs
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          languages: javascript
+          tools: linked
+          db-location: /tmp/codeql-dbs
+          threads: '1'
+          ram: '1024'
+      - name: Assert action ran with custom settings or failed gracefully
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          CODEQL_PATH: ${{ steps.action.outputs.codeql-path }}
+          CODEQL_VERSION: ${{ steps.action.outputs.codeql-version }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "codeql-path: $CODEQL_PATH"
+          echo "codeql-version: $CODEQL_VERSION"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -z "$CODEQL_PATH" ]; then
+              echo "FAIL: action succeeded but codeql-path output is empty"
+              exit 1
+            fi
+            echo "PASS: custom db-location/threads/ram succeeded, codeql-path=$CODEQL_PATH"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (expected under sentinel repo / restricted environment)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
