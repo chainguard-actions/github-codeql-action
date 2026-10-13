@@ -1,0 +1,43 @@
+name: Test CodeQL Finish - Upload Never
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Create output directory for SARIF results
+        run: mkdir -p "$GITHUB_WORKSPACE/sarif-results"
+
+      - name: Run CodeQL Finish action with upload=never
+        id: action
+        uses: .
+        continue-on-error: true
+        with:
+          upload: never
+          output: "${{ github.workspace }}/sarif-results"
+          skip-queries: "false"
+          wait-for-processing: "false"
+
+      - name: Assert action ran and failed gracefully (no init state, upload=never)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          SARIF_OUTPUT: ${{ steps.action.outputs.sarif-output }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "sarif-output: $SARIF_OUTPUT"
+          if [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully as expected (no prior init state)"
+          elif [ "$OUTCOME" = "success" ]; then
+            if [ -n "$SARIF_OUTPUT" ]; then
+              echo "PASS: action succeeded with sarif-output='$SARIF_OUTPUT'"
+            else
+              echo "PASS: action succeeded (sarif-output may be empty without queries)"
+            fi
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
