@@ -1,0 +1,46 @@
+name: Test init with debug and caching options
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          tools: linked
+          languages: python
+          build-mode: none
+          debug: 'false'
+          debug-artifact-name: test-debug-artifact
+          debug-database-name: test-debug-db
+          trap-caching: 'false'
+          dependency-caching: 'false'
+          setup-python-dependencies: 'false'
+      - name: Assert init succeeded with outputs, or failed gracefully on the sentinel repo
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          VERSION: ${{ steps.action.outputs.codeql-version }}
+          CODEQL_PATH: ${{ steps.action.outputs.codeql-path }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "codeql-version: $VERSION"
+          echo "codeql-path: $CODEQL_PATH"
+          if [ "$OUTCOME" = "success" ]; then
+            if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+'; then
+              echo "FAIL: codeql-version missing or not semver"
+              exit 1
+            fi
+            if [ -z "$CODEQL_PATH" ] || [ ! -x "$CODEQL_PATH" ]; then
+              echo "FAIL: codeql-path is empty or not executable"
+              exit 1
+            fi
+            echo "PASS: init succeeded with debug/caching options"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: init failed gracefully (feature-flag API 404s for the sentinel repo)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

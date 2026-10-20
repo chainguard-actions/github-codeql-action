@@ -1,0 +1,42 @@
+name: "Diagnostic export"
+description: "Tests that manually added diagnostics are correctly exported to SARIF."
+versions:
+  - linked
+  - nightly-latest
+env:
+  CODEQL_ACTION_EXPORT_DIAGNOSTICS: true
+installNode: true
+steps:
+  - uses: ./../action/init
+    id: init
+    with:
+      languages: javascript
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+  - name: Add test diagnostics
+    env:
+      CODEQL_PATH: ${{ steps.init.outputs.codeql-path }}
+    run: |
+      "$CODEQL_PATH" database add-diagnostic \
+        "$RUNNER_TEMP/codeql_databases/javascript" \
+        --file-path /path/to/file \
+        --plaintext-message "Plaintext message" \
+        --source-id "lang/diagnostics/example" \
+        --source-name "Diagnostic name" \
+        --ready-for-status-page
+  - uses: ./../action/analyze
+    with:
+      output: "${{ runner.temp }}/results"
+      upload-database: false
+  - name: Upload SARIF
+    uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+    with:
+      name: diagnostics-export-${{ matrix.os }}-${{ matrix.version }}.sarif.json
+      path: "${{ runner.temp }}/results/javascript.sarif"
+      retention-days: 7
+
+  - name: Check diagnostics appear in SARIF
+    env:
+      SARIF_PATH: "${{ runner.temp }}/results/javascript.sarif"
+    run: |
+      cd ../action
+      npx tsx ./pr-checks/check-diagnostics.ts

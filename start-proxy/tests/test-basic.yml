@@ -1,0 +1,30 @@
+name: Test basic (no credentials skips proxy)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          language: java
+      - name: Assert proxy setup skipped (no outputs)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          HOST: ${{ steps.action.outputs.proxy_host }}
+          PORT: ${{ steps.action.outputs.proxy_port }}
+          CA: ${{ steps.action.outputs.proxy_ca_certificate }}
+          URLS: ${{ steps.action.outputs.proxy_urls }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "host: $HOST"
+          echo "port: $PORT"
+          echo "urls: $URLS"
+          if [ "$OUTCOME" != "success" ]; then echo "FAIL: expected success"; exit 1; fi
+          if [ -n "$HOST" ] || [ -n "$PORT" ] || [ -n "$CA" ]; then
+            echo "FAIL: expected no proxy outputs when no credentials are configured"
+            exit 1
+          fi
+          echo "PASS"
