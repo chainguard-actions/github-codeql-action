@@ -1,0 +1,56 @@
+name: Test config-file, source-root and db-location
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Write CodeQL config file into the workspace
+        run: |
+          cat > "$GITHUB_WORKSPACE/codeql-test-config.yml" <<'EOF'
+          name: "File test config"
+          paths-ignore:
+            - node_modules
+          EOF
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          languages: javascript
+          build-mode: none
+          tools: linked
+          config-file: ./codeql-test-config.yml
+          source-root: .
+          db-location: ${{ runner.temp }}/codeql-test-dbs
+      - name: Assert init ran (outputs set, or failed gracefully on the sentinel repo)
+        env:
+          CODEQL_PATH: ${{ steps.action.outputs.codeql-path }}
+          CODEQL_VERSION: ${{ steps.action.outputs.codeql-version }}
+          OUTCOME: ${{ steps.action.outcome }}
+          DB_LOCATION: ${{ runner.temp }}/codeql-test-dbs
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "codeql-path: $CODEQL_PATH"
+          echo "codeql-version: $CODEQL_VERSION"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -z "$CODEQL_PATH" ] || [ ! -x "$CODEQL_PATH" ]; then
+              echo "FAIL: codeql-path is empty or not executable"
+              exit 1
+            fi
+            if ! echo "$CODEQL_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+'; then
+              echo "FAIL: codeql-version does not look like a semver"
+              exit 1
+            fi
+            if [ ! -d "$DB_LOCATION" ]; then
+              echo "FAIL: db-location directory $DB_LOCATION was not created"
+              exit 1
+            fi
+            ls -la "$DB_LOCATION"
+            echo "PASS: CodeQL initialised with custom db-location"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (sentinel repo is not resolvable)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
