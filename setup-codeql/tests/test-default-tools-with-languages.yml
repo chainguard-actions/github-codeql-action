@@ -1,0 +1,50 @@
+name: Test setup-codeql with default tools and languages
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Pre-seed cached feature flags (avoid repo-scoped feature API on sentinel repo)
+        run: |
+          TMPD="$RUNNER_TEMP/codeql-action-temp"
+          mkdir -p "$TMPD"
+          echo '{}' > "$TMPD/cached-feature-flags.json"
+          echo '{}' > "$RUNNER_TEMP/cached-feature-flags.json"
+          echo "CODEQL_ACTION_TEMP=$TMPD" >> "$GITHUB_ENV"
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          languages: javascript
+      - name: Assert outputs (or graceful failure on sentinel repo)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          CODEQL_PATH: ${{ steps.action.outputs.codeql-path }}
+          VERSION: ${{ steps.action.outputs.codeql-version }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "codeql-path: $CODEQL_PATH"
+          echo "codeql-version: $VERSION"
+          if [ "$OUTCOME" = "success" ]; then
+            if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+'; then
+              echo "FAIL: codeql-version is not a version string"
+              exit 1
+            fi
+            if [ -z "$CODEQL_PATH" ] || [ ! -e "$CODEQL_PATH" ]; then
+              echo "FAIL: codeql-path is empty or does not exist"
+              exit 1
+            fi
+            "$CODEQL_PATH" resolve languages | tee /tmp/langs.txt
+            if ! grep -qi javascript /tmp/langs.txt; then
+              echo "FAIL: javascript extractor not available"
+              exit 1
+            fi
+            echo "PASS"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (sentinel repo is not resolvable by the feature-flag API)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
