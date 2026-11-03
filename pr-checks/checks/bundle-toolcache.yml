@@ -1,0 +1,36 @@
+name: "Bundle: Caching checks"
+description: "The CodeQL bundle should be cached within the toolcache"
+versions:
+  - linked
+operatingSystems:
+  - ubuntu
+  - macos
+  - windows
+installNode: true
+steps:
+  - name: Remove CodeQL from toolcache
+    run: |
+      cd ./../action
+      npx tsx ./pr-checks/toolcache.ts clear
+
+  - name: Check toolcache does not contain CodeQL
+    run: |
+      cd ./../action
+      npx tsx ./pr-checks/toolcache.ts absent
+
+  - id: init
+    uses: ./../action/init
+    with:
+      # Request multiple languages so this check uses the combined bundle.
+      languages: javascript,python
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+  - uses: ./../action/analyze
+    with:
+      output: ${{ runner.temp }}/results
+      upload-database: false
+
+  - name: Check CodeQL is installed within the toolcache
+    run: |
+      cd ./../action
+      npx tsx ./pr-checks/toolcache.ts installed -n 1

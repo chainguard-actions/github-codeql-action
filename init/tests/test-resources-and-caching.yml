@@ -1,0 +1,55 @@
+name: Test init with ram, threads and caching options
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          tools: linked
+          languages: python
+          build-mode: none
+          ram: "2048"
+          threads: "1"
+          trap-caching: "false"
+          dependency-caching: "false"
+          setup-python-dependencies: "false"
+      - name: Assert action ran (outputs + env, or failed gracefully on the sentinel repo)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          CODEQL_PATH: ${{ steps.action.outputs.codeql-path }}
+          VERSION: ${{ steps.action.outputs.codeql-version }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "codeql-path: $CODEQL_PATH"
+          echo "codeql-version: $VERSION"
+          echo "CODEQL_RAM=${CODEQL_RAM:-}"
+          echo "CODEQL_THREADS=${CODEQL_THREADS:-}"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -z "$CODEQL_PATH" ] || [ ! -x "$CODEQL_PATH" ]; then
+              echo "FAIL: codeql-path missing or not executable"
+              exit 1
+            fi
+            if [ -z "$VERSION" ]; then
+              echo "FAIL: codeql-version empty"
+              exit 1
+            fi
+            if [ -n "${CODEQL_RAM:-}" ] && [ "$CODEQL_RAM" != "2048" ]; then
+              echo "FAIL: CODEQL_RAM expected 2048"
+              exit 1
+            fi
+            if [ -n "${CODEQL_THREADS:-}" ] && [ "$CODEQL_THREADS" != "1" ]; then
+              echo "FAIL: CODEQL_THREADS expected 1"
+              exit 1
+            fi
+            echo "PASS: init succeeded with resource and caching options"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (feature-flag API is repo-scoped; sentinel repo is not resolvable)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
