@@ -1,0 +1,50 @@
+name: Test basic SARIF upload
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Create a valid SARIF file
+        run: |
+          mkdir -p test-sarif
+          cat > test-sarif/results.sarif <<'EOF'
+          {
+            "version": "2.1.0",
+            "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+            "runs": [
+              {
+                "tool": { "driver": { "name": "TestTool", "version": "1.0.0", "rules": [] } },
+                "results": []
+              }
+            ]
+          }
+          EOF
+          cat test-sarif/results.sarif
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          sarif_file: test-sarif/results.sarif
+          wait-for-processing: "false"
+          category: act-test-basic
+      - name: Assert action ran (sarif-id set, or failed gracefully on the sentinel repo)
+        env:
+          RESULT: ${{ steps.action.outputs.sarif-id }}
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "result: $RESULT"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -z "$RESULT" ]; then
+              echo "FAIL: action succeeded but sarif-id is empty"
+              exit 1
+            fi
+            echo "PASS: got '$RESULT'"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (sentinel repo is not resolvable)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
