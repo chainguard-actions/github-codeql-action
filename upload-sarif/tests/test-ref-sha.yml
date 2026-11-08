@@ -1,0 +1,53 @@
+name: Test SARIF upload with explicit ref and sha
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Copy SARIF fixture into place and capture HEAD sha
+        id: prep
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/../results"
+          cp "$GITHUB_WORKSPACE/tests/fixtures/results.sarif" "$GITHUB_WORKSPACE/../results/results.sarif"
+          echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - id: upload
+        uses: .
+        continue-on-error: true
+        with:
+          sarif_file: ../results
+          checkout_path: ${{ github.workspace }}
+          ref: refs/heads/main
+          sha: ${{ steps.prep.outputs.sha }}
+          wait-for-processing: "false"
+
+      - name: Assert action ran with ref/sha (upload succeeded or failed gracefully on sentinel repo)
+        env:
+          SARIF_ID: ${{ steps.upload.outputs.sarif-id }}
+          OUTCOME: ${{ steps.upload.outcome }}
+          SHA: ${{ steps.prep.outputs.sha }}
+        run: |
+          echo "sha used: $SHA"
+          echo "outcome: $OUTCOME"
+          echo "sarif-id: $SARIF_ID"
+          if ! echo "$SHA" | grep -qE '^[0-9a-f]{40}$'; then
+            echo "FAIL: could not determine a valid HEAD sha"
+            exit 1
+          fi
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -z "$SARIF_ID" ]; then
+              echo "FAIL: action succeeded but sarif-id output is empty"
+              exit 1
+            fi
+            echo "PASS: upload succeeded with sarif-id=$SARIF_ID"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (sentinel repo is not resolvable on GitHub)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

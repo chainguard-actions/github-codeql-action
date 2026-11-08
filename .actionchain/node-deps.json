@@ -1,0 +1,90 @@
+{
+  "status": "unbundlable",
+  "entries": [
+    {
+      "path": "lib/analyze-action-post.js",
+      "status": "unbundlable",
+      "reason": "ignored-dynamic-import: Importing \"supports-color\" was allowed even though it could not be resolved because dynamic import failures appear to be handled here:",
+      "warnings": [
+        "ignored-dynamic-import: Importing \"supports-color\" was allowed even though it could not be resolved because dynamic import failures appear to be handled here:",
+        "ignored-dynamic-import: Importing \"encoding\" was allowed even though it could not be resolved because dynamic import failures appear to be handled here:"
+      ]
+    },
+    {
+      "path": "lib/analyze-action.js",
+      "status": "unbundlable",
+      "reason": "ignored-dynamic-import: Importing \"supports-color\" was allowed even though it could not be resolved because dynamic import failures appear to be handled here:",
+      "warnings": [
+        "ignored-dynamic-import: Importing \"supports-color\" was allowed even though it could not be resolved because dynamic import failures appear to be handled here:",
+        "ignored-dynamic-import: Importing \"encoding\" was allowed even though it could not be resolved because dynamic import failures appear to be handled here:"
+      ]
+    },
+    {
+      "path": "lib/autobuild-action.js",
+      "status": "unbundlable",
+      "reason": "ignored-dynamic-import: Importing \"supports-color\" was allowed even though it could not be resolved because dynamic import failures appear to be handled here:",
+      "warnings": [
+        "ignored-dynamic-import: Importing \"supports-color\" was allowed even though it could not be resolved because dynamic import failures appear to be handled here:",
+        "ignored-dynamic-import: Importing \"encoding\" was allowed even though it could not be resolved because dynamic import failures appear to be handled here:"
+      ]
+    },
+    {
+      "path": "lib/init-action-post.js",
+      "status": "unbundlable",
+      "reason": "ignored-dynamic-import: Importing \"supports-color\" was allowed even though it could not be resolved because dynamic import failures appear to be handled here:",
+      "warnings": [
+        "ignored-dynamic-import: Importing \"supports-color\" was allowed even though it could not be resolved because dynamic import failures appear to be handled here:",
+        "ignored-dynamic-import: Importing \"encoding\" was allowed even though it could not be resolved because dynamic import failures appear to be handled here:"
+      ]
+    },
+    {
+      "path": "lib/init-action.js",
+      "status": "unbundlable",
+      "reason": "ignored-dynamic-import: Importing \"supports-color\" was allowed even though it could not be resolved because dynamic import failures appear to be handled here:",
+      "warnings": [
+        "ignored-dynamic-import: Importing \"supports-color\" was allowed even though it could not be resolved because dynamic import failures appear to be handled here:",
+        "ignored-dynamic-import: Importing \"encoding\" was allowed even though it could not be resolved because dynamic import failures appear to be handled here:"
+      ]
+    },
+    {
+      "path": "lib/resolve-environment-action.js",
+      "status": "unbundlable",
+      "reason": "ignored-dynamic-import: Importing \"supports-color\" was allowed even though it could not be resolved because dynamic import failures appear to be handled here:",
+      "warnings": [
+        "ignored-dynamic-import: Importing \"supports-color\" was allowed even though it could not be resolved because dynamic import failures appear to be handled here:",
+        "ignored-dynamic-import: Importing \"encoding\" was allowed even though it could not be resolved because dynamic import failures appear to be handled here:"
+      ]
+    },
+    {
+      "path": "lib/start-proxy-action-post.js",
+      "status": "unbundlable",
+      "reason": "ignored-dynamic-import: Importing \"supports-color\" was allowed even though it could not be resolved because dynamic import failures appear to be handled here:",
+      "warnings": [
+        "ignored-dynamic-import: Importing \"supports-color\" was allowed even though it could not be resolved because dynamic import failures appear to be handled here:",
+        "ignored-dynamic-import: Importing \"encoding\" was allowed even though it could not be resolved because dynamic import failures appear to be handled here:"
+      ]
+    },
+    {
+      "path": "lib/start-proxy-action.js",
+      "status": "bundled"
+    },
+    {
+      "path": "lib/upload-sarif-action-post.js",
+      "status": "unbundlable",
+      "reason": "ignored-dynamic-import: Importing \"supports-color\" was allowed even though it could not be resolved because dynamic import failures appear to be handled here:",
+      "warnings": [
+        "ignored-dynamic-import: Importing \"supports-color\" was allowed even though it could not be resolved because dynamic import failures appear to be handled here:",
+        "ignored-dynamic-import: Importing \"encoding\" was allowed even though it could not be resolved because dynamic import failures appear to be handled here:"
+      ]
+    },
+    {
+      "path": "lib/upload-sarif-action.js",
+      "status": "unbundlable",
+      "reason": "ignored-dynamic-import: Importing \"supports-color\" was allowed even though it could not be resolved because dynamic import failures appear to be handled here:",
+      "warnings": [
+        "ignored-dynamic-import: Importing \"supports-color\" was allowed even though it could not be resolved because dynamic import failures appear to be handled here:",
+        "ignored-dynamic-import: Importing \"encoding\" was allowed even though it could not be resolved because dynamic import failures appear to be handled here:"
+      ]
+    }
+  ]
+}

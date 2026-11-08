@@ -1,0 +1,15 @@
+{
+  "status": "unbundlable",
+  "entries": [
+    {
+      "path": "../lib/upload-sarif-action.js",
+      "status": "unbundlable",
+      "reason": "entry path is absolute or escapes the action root"
+    },
+    {
+      "path": "../lib/upload-sarif-action-post.js",
+      "status": "unbundlable",
+      "reason": "entry path is absolute or escapes the action root"
+    }
+  ]
+}

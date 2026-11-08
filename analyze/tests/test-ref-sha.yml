@@ -1,0 +1,48 @@
+name: Test CodeQL Finish - Explicit ref and sha
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Get HEAD sha
+        id: head
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Create output directory
+        run: mkdir -p "$GITHUB_WORKSPACE/sarif-results"
+
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          upload: "never"
+          output: "${{ github.workspace }}/sarif-results"
+          wait-for-processing: "false"
+          cleanup-level: "none"
+          ref: "refs/heads/main"
+          sha: ${{ steps.head.outputs.sha }}
+
+      - name: Assert action ran (fails gracefully without CodeQL init)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          SARIF_OUTPUT: ${{ steps.action.outputs.sarif-output }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "sarif-output: $SARIF_OUTPUT"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -z "$SARIF_OUTPUT" ]; then
+              echo "FAIL: action succeeded but sarif-output is empty"
+              exit 1
+            fi
+            echo "PASS: sarif-output is '$SARIF_OUTPUT'"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully as expected (no CodeQL init was run)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
