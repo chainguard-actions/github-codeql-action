@@ -1,0 +1,33 @@
+name: Test start-proxy filters registries not matching language
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          language: javascript
+          registry_secrets: '[{"type":"maven_repository","url":"https://repo.example.com/maven","username":"user","password":"pass"}]'
+      - name: Assert maven registry was filtered out for javascript
+        env:
+          HOST: ${{ steps.action.outputs.proxy_host }}
+          URLS: ${{ steps.action.outputs.proxy_urls }}
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME host: '$HOST' urls: '$URLS'"
+          if [ "$OUTCOME" != "success" ]; then
+            echo "FAIL: expected success"
+            exit 1
+          fi
+          if [ -n "$HOST" ]; then
+            echo "FAIL: proxy should not start when no registry matches the language"
+            exit 1
+          fi
+          if echo "$URLS" | grep -q "repo.example.com"; then
+            echo "FAIL: maven registry should have been filtered out"
+            exit 1
+          fi
+          echo "PASS"
