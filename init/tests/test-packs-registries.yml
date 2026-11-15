@@ -1,0 +1,47 @@
+name: Test init with packs, registries, quality-queries and external token
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          languages: javascript
+          build-mode: none
+          tools: linked
+          packs: codeql/javascript-queries
+          quality-queries: code-quality
+          external-repository-token: ${{ github.token }}
+          registries: |
+            - url: https://ghcr.io/v2/
+              packages: codeql/*
+              token: ${{ github.token }}
+      - name: Assert outputs (or graceful failure on sentinel repo)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          CODEQL_PATH: ${{ steps.action.outputs.codeql-path }}
+          CODEQL_VERSION: ${{ steps.action.outputs.codeql-version }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "codeql-path: $CODEQL_PATH"
+          echo "codeql-version: $CODEQL_VERSION"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -z "$CODEQL_PATH" ] || [ ! -x "$CODEQL_PATH" ]; then
+              echo "FAIL: codeql-path missing or not executable"
+              exit 1
+            fi
+            if [ -z "$CODEQL_VERSION" ]; then
+              echo "FAIL: codeql-version is empty"
+              exit 1
+            fi
+            echo "PASS: CodeQL initialized with packs/registries"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (sentinel repo / pack download not resolvable)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

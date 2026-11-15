@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "ActTestTool",
+          "version": "1.0.0",
+          "informationUri": "https://example.com",
+          "rules": [
+            {
+              "id": "act-test-rule",
+              "shortDescription": { "text": "Act test rule" },
+              "fullDescription": { "text": "A rule used for act harness testing" }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "act-test-rule",
+          "level": "warning",
+          "message": { "text": "Test finding" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "README.md" },
+                "region": { "startLine": 1 }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
