@@ -1,0 +1,37 @@
+name: Test setup with external-repository-token
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      # Seed an empty feature-flag cache so the repo-scoped feature-flags API
+      # (which 404s on the harness sentinel repo) is not needed.
+      - name: Seed empty feature-flag cache
+        run: |
+          TMPD="$RUNNER_TEMP/codeql-action-test-tmp"
+          mkdir -p "$TMPD"
+          echo '{}' > "$TMPD/cached-feature-flags.json"
+          echo "CODEQL_ACTION_TEMP=$TMPD" >> "$GITHUB_ENV"
+      - id: action
+        uses: .
+        with:
+          tools: linked
+          external-repository-token: ${{ github.token }}
+      - name: Assert outputs are set and consistent
+        env:
+          CODEQL_PATH: ${{ steps.action.outputs.codeql-path }}
+          CODEQL_VERSION: ${{ steps.action.outputs.codeql-version }}
+        run: |
+          echo "codeql-path: $CODEQL_PATH"
+          echo "codeql-version: $CODEQL_VERSION"
+          if [ -z "$CODEQL_PATH" ] || [ ! -x "$CODEQL_PATH" ]; then
+            echo "FAIL: codeql-path is empty or not executable"
+            exit 1
+          fi
+          if ! echo "$CODEQL_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+'; then
+            echo "FAIL: codeql-version is not a version string"
+            exit 1
+          fi
+          echo "PASS"

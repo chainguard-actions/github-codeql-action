@@ -1,0 +1,47 @@
+name: Test stub failure prevents dependent steps
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+      - id: after
+        name: Should not run (only runs if stub succeeded)
+        if: steps.action.outcome == 'success'
+        run: echo "reached=true" >> "$GITHUB_OUTPUT"
+      - id: onfail
+        name: Should run (stub failed)
+        if: steps.action.outcome == 'failure'
+        run: echo "reached=true" >> "$GITHUB_OUTPUT"
+      - name: Assert dependent step skipped and failure path taken
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          CONCLUSION: ${{ steps.action.conclusion }}
+          AFTER: ${{ steps.after.outputs.reached }}
+          ONFAIL: ${{ steps.onfail.outputs.reached }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "conclusion: $CONCLUSION"
+          echo "after reached: $AFTER"
+          echo "onfail reached: $ONFAIL"
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "FAIL: expected stub outcome 'failure'"
+            exit 1
+          fi
+          if [ "$CONCLUSION" != "success" ]; then
+            echo "FAIL: expected conclusion 'success' due to continue-on-error"
+            exit 1
+          fi
+          if [ "$AFTER" = "true" ]; then
+            echo "FAIL: success-dependent step ran"
+            exit 1
+          fi
+          if [ "$ONFAIL" != "true" ]; then
+            echo "FAIL: failure-path step did not run"
+            exit 1
+          fi
+          echo "PASS"

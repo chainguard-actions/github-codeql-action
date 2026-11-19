@@ -1,0 +1,53 @@
+name: Test setup with linked tools
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      # The feature-flags endpoint is repo-scoped and 404s on the harness
+      # sentinel repo. The action first reads a cached feature-flags file from
+      # its temp dir (CODEQL_ACTION_TEMP) before calling the API, so seed an
+      # empty cache (all toggleable features off) in a dedicated temp dir.
+      - name: Seed empty feature-flag cache
+        run: |
+          TMPD="$RUNNER_TEMP/codeql-action-test-tmp"
+          mkdir -p "$TMPD"
+          echo '{}' > "$TMPD/cached-feature-flags.json"
+          echo "CODEQL_ACTION_TEMP=$TMPD" >> "$GITHUB_ENV"
+      - id: action
+        uses: .
+        with:
+          tools: linked
+      - name: Assert codeql-path is an executable
+        env:
+          CODEQL_PATH: ${{ steps.action.outputs.codeql-path }}
+        run: |
+          echo "codeql-path: $CODEQL_PATH"
+          if [ -z "$CODEQL_PATH" ]; then
+            echo "FAIL: codeql-path is empty"
+            exit 1
+          fi
+          if [ ! -x "$CODEQL_PATH" ]; then
+            echo "FAIL: codeql-path is not an executable file"
+            exit 1
+          fi
+          echo "PASS"
+      - name: Assert codeql-version looks like a semver and matches the binary
+        env:
+          CODEQL_PATH: ${{ steps.action.outputs.codeql-path }}
+          CODEQL_VERSION: ${{ steps.action.outputs.codeql-version }}
+        run: |
+          echo "codeql-version: $CODEQL_VERSION"
+          if ! echo "$CODEQL_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+'; then
+            echo "FAIL: codeql-version is not a version string"
+            exit 1
+          fi
+          BIN_VERSION="$("$CODEQL_PATH" version --format=terse)"
+          echo "binary version: $BIN_VERSION"
+          if [ "$BIN_VERSION" != "$CODEQL_VERSION" ]; then
+            echo "FAIL: binary version does not match output"
+            exit 1
+          fi
+          echo "PASS"

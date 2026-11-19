@@ -1,0 +1,43 @@
+name: Test setup with default tools and languages
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      # The feature-flags endpoint is repo-scoped and 404s on the harness
+      # sentinel repo. The action first reads a cached feature-flags file from
+      # its temp dir (CODEQL_ACTION_TEMP) before calling the API, so seed an
+      # empty cache (all toggleable features off) in a dedicated temp dir.
+      - name: Seed empty feature-flag cache
+        run: |
+          TMPD="$RUNNER_TEMP/codeql-action-test-tmp"
+          mkdir -p "$TMPD"
+          echo '{}' > "$TMPD/cached-feature-flags.json"
+          echo "CODEQL_ACTION_TEMP=$TMPD" >> "$GITHUB_ENV"
+      - id: action
+        uses: .
+        with:
+          languages: javascript
+      - name: Assert outputs
+        env:
+          CODEQL_PATH: ${{ steps.action.outputs.codeql-path }}
+          CODEQL_VERSION: ${{ steps.action.outputs.codeql-version }}
+        run: |
+          echo "codeql-path: $CODEQL_PATH"
+          echo "codeql-version: $CODEQL_VERSION"
+          if [ -z "$CODEQL_PATH" ] || [ ! -x "$CODEQL_PATH" ]; then
+            echo "FAIL: codeql-path missing or not executable"
+            exit 1
+          fi
+          if ! echo "$CODEQL_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+'; then
+            echo "FAIL: codeql-version is not a version string"
+            exit 1
+          fi
+          "$CODEQL_PATH" resolve languages | tee /tmp/langs.txt
+          if ! grep -q javascript /tmp/langs.txt; then
+            echo "FAIL: javascript extractor not available"
+            exit 1
+          fi
+          echo "PASS"

@@ -1,0 +1,37 @@
+name: Test basic proxy start (no credentials -> proxy skipped)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          language: java
+      - name: Assert action succeeded and skipped proxy setup
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          HOST: ${{ steps.action.outputs.proxy_host }}
+          PORT: ${{ steps.action.outputs.proxy_port }}
+          CERT: ${{ steps.action.outputs.proxy_ca_certificate }}
+          URLS: ${{ steps.action.outputs.proxy_urls }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "host: $HOST"
+          echo "port: $PORT"
+          echo "urls: $URLS"
+          echo "cert: $CERT"
+          if [ "$OUTCOME" != "success" ]; then
+            echo "FAIL: expected step to succeed, got '$OUTCOME'"
+            exit 1
+          fi
+          # With the default empty registry_secrets ("[]") there are no
+          # credentials, so the action skips starting the proxy and sets no
+          # proxy outputs.
+          if [ -n "$HOST" ] || [ -n "$PORT" ] || [ -n "$CERT" ]; then
+            echo "FAIL: expected no proxy outputs when no credentials are configured"
+            exit 1
+          fi
+          echo "PASS"
