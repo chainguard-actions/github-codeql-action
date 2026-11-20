@@ -1,0 +1,21 @@
+name: "Bundle: From toolcache"
+description: "The CodeQL bundle should be cached within the toolcache"
+versions:
+  - toolcache
+installNode: true
+steps:
+  - name: Check toolcache contains CodeQL
+    continue-on-error: true
+    run: |
+      cd ./../action
+      npx tsx ./pr-checks/toolcache.ts installed
+
+  - id: setup-codeql
+    uses: ./../action/setup-codeql
+    with:
+      tools: ${{ steps.prepare-test.outputs.tools-url }}
+
+  - name: Check CodeQL is installed within the toolcache
+    run: |
+      cd ./../action
+      npx tsx ./pr-checks/toolcache.ts installed

@@ -1,0 +1,29 @@
+name: Test start-proxy filters credentials not matching language
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        with:
+          language: java
+          registry_secrets: '[{"type":"npm_registry","url":"https://npm.example.com","token":"dummy"}]'
+      - name: Assert action succeeded and did not configure npm registry
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          URLS: ${{ steps.action.outputs.proxy_urls }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "proxy_urls: $URLS"
+          if [ "$OUTCOME" != "success" ]; then
+            echo "FAIL: expected success"
+            exit 1
+          fi
+          if echo "$URLS" | grep -q "npm.example.com"; then
+            echo "FAIL: npm registry should have been filtered out for java"
+            exit 1
+          fi
+          echo "PASS"
