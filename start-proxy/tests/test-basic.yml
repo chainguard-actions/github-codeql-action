@@ -1,41 +1,32 @@
-name: Test basic usage - no registry secrets
+name: Test basic proxy start (no registries configured)
 on:
   workflow_dispatch:
 jobs:
   test:
     runs-on: ubuntu-latest
-    permissions:
-      security-events: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
       - id: action
         uses: .
-        continue-on-error: true
         with:
-          registry_secrets: "[]"
-      - name: Assert action ran and produced outputs or failed gracefully
+          language: java
+      - name: Assert proxy setup skipped (no credentials) and step succeeded
         env:
           OUTCOME: ${{ steps.action.outcome }}
-          PROXY_HOST: ${{ steps.action.outputs.proxy_host }}
-          PROXY_PORT: ${{ steps.action.outputs.proxy_port }}
-          PROXY_CA_CERT: ${{ steps.action.outputs.proxy_ca_certificate }}
-          PROXY_URLS: ${{ steps.action.outputs.proxy_urls }}
+          HOST: ${{ steps.action.outputs.proxy_host }}
+          PORT: ${{ steps.action.outputs.proxy_port }}
+          CERT: ${{ steps.action.outputs.proxy_ca_certificate }}
+          URLS: ${{ steps.action.outputs.proxy_urls }}
         run: |
           echo "outcome: $OUTCOME"
-          echo "proxy_host: $PROXY_HOST"
-          echo "proxy_port: $PROXY_PORT"
-          echo "proxy_ca_certificate: $PROXY_CA_CERT"
-          echo "proxy_urls: $PROXY_URLS"
-          if [ "$OUTCOME" = "success" ]; then
-            echo "Action succeeded"
-            # If it succeeded, proxy_host and proxy_port should be set
-            if [ -z "$PROXY_HOST" ] && [ -z "$PROXY_PORT" ]; then
-              echo "WARN: action succeeded but no proxy outputs set (may be expected with empty registry_secrets)"
-            fi
-            echo "PASS: action completed successfully"
-          elif [ "$OUTCOME" = "failure" ]; then
-            echo "PASS: action failed gracefully (expected in harness environment without real CodeQL infrastructure)"
-          else
-            echo "FAIL: unexpected outcome '$OUTCOME'"
+          echo "host: $HOST"
+          echo "port: $PORT"
+          echo "urls: $URLS"
+          echo "cert: $CERT"
+          if [ "$OUTCOME" != "success" ]; then echo "FAIL: expected success"; exit 1; fi
+          # With no credentials the action skips proxy setup and sets no outputs.
+          if [ -n "$HOST" ] || [ -n "$PORT" ] || [ -n "$CERT" ]; then
+            echo "FAIL: expected no proxy outputs when no credentials are configured"
             exit 1
           fi
+          echo "PASS"

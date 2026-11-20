@@ -3,7 +3,7 @@
   "repo": "codeql-action",
   "version": "v3",
   "path": "autobuild",
-  "commit_sha": "1190a975f95ce23525efb6a3fc21ea29567c1b52",
+  "commit_sha": "d2aacf54c2fbc910db8d7ec338fdb54ea48c692d",
   "url": "https://github.com/github/codeql-action",
   "policy_sha": "d636be7e43ef829af6e853da6b3c7566db9f72fe",
   "test_policy_sha": "843adf9e4b8f85d0c08b27b9d0b09dd094b54702",

@@ -1,4 +1,4 @@
-name: Test CodeQL Init - Basic JavaScript
+name: Test basic init for javascript
 on:
   workflow_dispatch:
 jobs:
@@ -6,31 +6,36 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-      - id: init
+      - id: action
         uses: .
         continue-on-error: true
         with:
           languages: javascript
+          build-mode: none
           tools: linked
-
-      - name: Assert action ran and produced outputs or failed gracefully
+          db-location: ${{ runner.temp }}/codeql-db-basic
+      - name: Assert init outputs (or graceful failure on sentinel repo)
         env:
-          OUTCOME: ${{ steps.init.outcome }}
-          CODEQL_PATH: ${{ steps.init.outputs.codeql-path }}
-          CODEQL_VERSION: ${{ steps.init.outputs.codeql-version }}
+          OUTCOME: ${{ steps.action.outcome }}
+          CODEQL_PATH: ${{ steps.action.outputs.codeql-path }}
+          CODEQL_VERSION: ${{ steps.action.outputs.codeql-version }}
         run: |
           echo "outcome: $OUTCOME"
           echo "codeql-path: $CODEQL_PATH"
           echo "codeql-version: $CODEQL_VERSION"
           if [ "$OUTCOME" = "success" ]; then
-            if [ -z "$CODEQL_PATH" ]; then
-              echo "FAIL: action succeeded but codeql-path output is empty"
+            if [ -z "$CODEQL_PATH" ] || [ ! -x "$CODEQL_PATH" ]; then
+              echo "FAIL: codeql-path is empty or not executable"
               exit 1
             fi
-            echo "PASS: codeql-path=$CODEQL_PATH version=$CODEQL_VERSION"
+            if ! echo "$CODEQL_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+'; then
+              echo "FAIL: codeql-version is not a semver-like string"
+              exit 1
+            fi
+            "$CODEQL_PATH" version || { echo "FAIL: codeql binary does not run"; exit 1; }
+            echo "PASS: CodeQL initialized"
           elif [ "$OUTCOME" = "failure" ]; then
-            echo "PASS: action failed gracefully (expected under harness environment)"
+            echo "PASS: action failed gracefully (sentinel repo is not resolvable)"
           else
             echo "FAIL: unexpected outcome '$OUTCOME'"
             exit 1
