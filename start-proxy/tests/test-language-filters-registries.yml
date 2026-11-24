@@ -1,0 +1,38 @@
+name: Test start-proxy filters registries by language
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      # Feature-flag lookup is repo-scoped (sentinel GITHUB_REPOSITORY) and may 404.
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          registry_secrets: '[{"type":"npm_registry","url":"https://registry.npmjs.org/","token":"npm-tok"},{"type":"maven_repository","url":"https://repo.maven.apache.org/maven2/","username":"user","password":"pass"}]'
+          language: java
+      - name: Assert only java-relevant registries are configured (or graceful failure)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          URLS: ${{ steps.action.outputs.proxy_urls }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "urls: $URLS"
+          if [ "$OUTCOME" = "success" ]; then
+            if ! echo "$URLS" | grep -q "maven_repository"; then
+              echo "FAIL: expected maven_repository in proxy_urls"
+              exit 1
+            fi
+            if echo "$URLS" | grep -q "npm_registry"; then
+              echo "FAIL: npm_registry should be filtered out for language java"
+              exit 1
+            fi
+            echo "PASS: registries filtered by language"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (sentinel repo is not resolvable)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

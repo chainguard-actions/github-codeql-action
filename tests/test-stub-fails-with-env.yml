@@ -1,4 +1,4 @@
-name: Test stub fails regardless of event context
+name: Test stub action fails even under push-like context
 on:
   workflow_dispatch:
 jobs:
@@ -18,7 +18,7 @@ jobs:
         run: |
           echo "outcome: $OUTCOME"
           if [ "$OUTCOME" != "failure" ]; then
-            echo "FAIL: expected the stub action to fail, got '$OUTCOME'"
+            echo "FAIL: expected the stub action to always fail, got '$OUTCOME'"
             exit 1
           fi
-          echo "PASS: stub action failed under push context"
+          echo "PASS"

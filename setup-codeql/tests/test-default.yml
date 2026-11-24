@@ -1,4 +1,4 @@
-name: Test init with caching toggles, registries and debug names
+name: Test setup with default tools and languages
 on:
   workflow_dispatch:
 jobs:
@@ -11,40 +11,33 @@ jobs:
         continue-on-error: true
         with:
           languages: javascript
-          build-mode: none
-          tools: linked
-          db-location: ${{ runner.temp }}/codeql-db-caching
-          trap-caching: "false"
-          dependency-caching: "false"
-          setup-python-dependencies: "false"
-          debug: "false"
-          debug-artifact-name: test-debug-artifact
-          debug-database-name: test-debug-db
-          registries: |
-            - url: https://ghcr.io/v2/
-              packages: "*/*"
-              token: ${{ github.token }}
-      - name: Assert init outputs (or graceful failure on sentinel repo)
+      - name: Assert outputs, or graceful failure on sentinel repo
         env:
-          OUTCOME: ${{ steps.action.outcome }}
           CODEQL_PATH: ${{ steps.action.outputs.codeql-path }}
           CODEQL_VERSION: ${{ steps.action.outputs.codeql-version }}
+          OUTCOME: ${{ steps.action.outcome }}
         run: |
           echo "outcome: $OUTCOME"
           echo "codeql-path: $CODEQL_PATH"
           echo "codeql-version: $CODEQL_VERSION"
           if [ "$OUTCOME" = "success" ]; then
             if [ -z "$CODEQL_PATH" ] || [ ! -x "$CODEQL_PATH" ]; then
-              echo "FAIL: codeql-path is empty or not executable"
+              echo "FAIL: codeql-path missing or not executable"
               exit 1
             fi
             if ! echo "$CODEQL_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+'; then
               echo "FAIL: codeql-version is not a semver-like string"
               exit 1
             fi
-            echo "PASS: CodeQL initialized with caching/registries options"
+            "$CODEQL_PATH" resolve languages | grep -q javascript || {
+              echo "FAIL: installed CLI does not support javascript"; exit 1; }
+            echo "PASS: CodeQL installed with javascript support"
           elif [ "$OUTCOME" = "failure" ]; then
-            echo "PASS: action failed gracefully (sentinel repo is not resolvable)"
+            if [ -n "$CODEQL_PATH" ]; then
+              echo "FAIL: action failed but still set codeql-path"
+              exit 1
+            fi
+            echo "PASS: action failed gracefully (feature-flag API 404s on sentinel repo)"
           else
             echo "FAIL: unexpected outcome '$OUTCOME'"
             exit 1

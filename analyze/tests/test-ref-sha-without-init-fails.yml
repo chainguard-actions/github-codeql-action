@@ -1,4 +1,4 @@
-name: Test analyze with resource/deprecated options without init
+name: Test analyze with explicit ref and sha without init fails
 on:
   workflow_dispatch:
 jobs:
@@ -10,16 +10,13 @@ jobs:
         uses: .
         continue-on-error: true
         with:
-          ram: "2048"
-          threads: "2"
-          cleanup-level: brutal
-          add-snippets: "true"
-          check_name: "CodeQL test check"
+          ref: refs/heads/main
+          sha: 0123456789abcdef0123456789abcdef01234567
+          category: test-category
           upload: never
           upload-database: "false"
           wait-for-processing: "false"
-          post-processed-sarif-path: ${{ runner.temp }}/post-processed-sarif
-      - name: Assert action failed cleanly because init was not run
+      - name: Assert action failed because init was not run
         env:
           OUTCOME: ${{ steps.action.outcome }}
           SARIF_ID: ${{ steps.action.outputs.sarif-id }}
@@ -27,11 +24,11 @@ jobs:
           echo "outcome: $OUTCOME"
           echo "sarif-id: $SARIF_ID"
           if [ "$OUTCOME" != "failure" ]; then
-            echo "FAIL: expected failure without a prior init step, got '$OUTCOME'"
+            echo "FAIL: expected analyze to fail without a prior init step, got '$OUTCOME'"
             exit 1
           fi
           if [ -n "$SARIF_ID" ]; then
-            echo "FAIL: sarif-id should be empty when nothing was uploaded"
+            echo "FAIL: sarif-id should be empty when analyze fails"
             exit 1
           fi
           echo "PASS"

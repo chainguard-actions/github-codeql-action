@@ -1,0 +1,39 @@
+name: Test resolve-environment without prior init
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Ensure no CodeQL config exists in RUNNER_TEMP
+        run: |
+          rm -rf "${RUNNER_TEMP:-/tmp}/codeql_databases" "${RUNNER_TEMP:-/tmp}/user-config.yaml" || true
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          language: java
+      - name: Assert action failed gracefully (init was not called) or produced valid JSON
+        env:
+          RESULT: ${{ steps.action.outputs.environment }}
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "result: $RESULT"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -z "$RESULT" ]; then
+              echo "FAIL: action succeeded but environment output is empty"
+              exit 1
+            fi
+            if ! echo "$RESULT" | python3 -c 'import json,sys; json.load(sys.stdin)'; then
+              echo "FAIL: environment output is not valid JSON"
+              exit 1
+            fi
+            echo "PASS: got valid JSON environment"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed as expected without a prior 'init' step"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

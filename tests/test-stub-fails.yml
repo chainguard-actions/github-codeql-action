@@ -1,4 +1,4 @@
-name: Test stub always fails
+name: Test stub action fails with guidance
 on:
   workflow_dispatch:
 jobs:
@@ -24,4 +24,4 @@ jobs:
             echo "FAIL: expected conclusion 'success' due to continue-on-error, got '$CONCLUSION'"
             exit 1
           fi
-          echo "PASS: stub action failed as designed"
+          echo "PASS"

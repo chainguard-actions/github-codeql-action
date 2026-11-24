@@ -5,7 +5,7 @@
     {
       "tool": {
         "driver": {
-          "name": "act-test-tool",
+          "name": "ActTestTool",
           "version": "1.0.0",
           "informationUri": "https://example.com/act-test-tool",
           "rules": [
@@ -22,16 +22,20 @@
       "results": [
         {
           "ruleId": "TEST001",
+          "ruleIndex": 0,
           "level": "warning",
           "message": { "text": "Test finding" },
           "locations": [
             {
               "physicalLocation": {
                 "artifactLocation": { "uri": "README.md" },
-                "region": { "startLine": 1 }
+                "region": { "startLine": 1, "startColumn": 1 }
               }
             }
-          ]
+          ],
+          "partialFingerprints": {
+            "primaryLocationLineHash": "0000000000000000:1"
+          }
         }
       ]
     }

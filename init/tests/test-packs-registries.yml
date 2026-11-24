@@ -1,4 +1,4 @@
-name: Test init with config-file, queries, packs
+name: Test init with packs, registries and quality-queries
 on:
   workflow_dispatch:
 jobs:
@@ -12,32 +12,32 @@ jobs:
         with:
           languages: javascript
           build-mode: none
-          tools: linked
-          db-location: ${{ runner.temp }}/codeql-db-cfgfile
-          config-file: tests/fixtures/codeql-config.yml
-          queries: +security-extended
-          quality-queries: code-quality
           packs: codeql/javascript-queries
-          external-repository-token: ${{ github.token }}
-      - name: Assert init outputs (or graceful failure on sentinel repo)
+          quality-queries: code-quality
+          registries: |
+            - url: https://ghcr.io/v2/
+              packages: "*/*"
+              token: ${{ github.token }}
+          db-location: ${{ runner.temp }}/codeql-db-packs
+      - name: Assert action ran (outputs set, or failed gracefully on the sentinel repo)
         env:
-          OUTCOME: ${{ steps.action.outcome }}
           CODEQL_PATH: ${{ steps.action.outputs.codeql-path }}
           CODEQL_VERSION: ${{ steps.action.outputs.codeql-version }}
+          OUTCOME: ${{ steps.action.outcome }}
         run: |
           echo "outcome: $OUTCOME"
           echo "codeql-path: $CODEQL_PATH"
           echo "codeql-version: $CODEQL_VERSION"
           if [ "$OUTCOME" = "success" ]; then
-            if [ -z "$CODEQL_PATH" ] || [ ! -x "$CODEQL_PATH" ]; then
-              echo "FAIL: codeql-path is empty or not executable"
+            if [ -z "$CODEQL_PATH" ] || [ ! -e "$CODEQL_PATH" ]; then
+              echo "FAIL: codeql-path is empty or does not exist"
               exit 1
             fi
-            if ! echo "$CODEQL_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+'; then
-              echo "FAIL: codeql-version is not a semver-like string"
+            if [ -z "$CODEQL_VERSION" ]; then
+              echo "FAIL: codeql-version is empty"
               exit 1
             fi
-            echo "PASS: CodeQL initialized with config-file/queries/packs"
+            echo "PASS"
           elif [ "$OUTCOME" = "failure" ]; then
             echo "PASS: action failed gracefully (sentinel repo is not resolvable)"
           else

@@ -1,4 +1,4 @@
-name: Test upload with nonexistent SARIF path fails
+name: Test error on missing SARIF file
 on:
   workflow_dispatch:
 jobs:
@@ -11,7 +11,6 @@ jobs:
         continue-on-error: true
         with:
           sarif_file: tests/fixtures/does-not-exist.sarif
-          wait-for-processing: "false"
       - name: Assert action failed
         env:
           OUTCOME: ${{ steps.action.outcome }}
@@ -20,11 +19,11 @@ jobs:
           echo "outcome: $OUTCOME"
           echo "result: $RESULT"
           if [ "$OUTCOME" != "failure" ]; then
-            echo "FAIL: expected failure for missing SARIF file, got '$OUTCOME'"
+            echo "FAIL: expected failure for missing SARIF file"
             exit 1
           fi
           if [ -n "$RESULT" ]; then
-            echo "FAIL: sarif-id should be empty on failure"
+            echo "FAIL: expected no sarif-id"
             exit 1
           fi
           echo "PASS"

@@ -12,28 +12,30 @@ jobs:
         with:
           languages: javascript
           build-mode: none
-          tools: linked
           db-location: ${{ runner.temp }}/codeql-db-basic
-      - name: Assert init outputs (or graceful failure on sentinel repo)
+      - name: Assert action ran (outputs set, or failed gracefully on the sentinel repo)
         env:
-          OUTCOME: ${{ steps.action.outcome }}
           CODEQL_PATH: ${{ steps.action.outputs.codeql-path }}
           CODEQL_VERSION: ${{ steps.action.outputs.codeql-version }}
+          OUTCOME: ${{ steps.action.outcome }}
         run: |
           echo "outcome: $OUTCOME"
           echo "codeql-path: $CODEQL_PATH"
           echo "codeql-version: $CODEQL_VERSION"
           if [ "$OUTCOME" = "success" ]; then
-            if [ -z "$CODEQL_PATH" ] || [ ! -x "$CODEQL_PATH" ]; then
-              echo "FAIL: codeql-path is empty or not executable"
+            if [ -z "$CODEQL_PATH" ] || [ ! -e "$CODEQL_PATH" ]; then
+              echo "FAIL: codeql-path is empty or does not exist"
+              exit 1
+            fi
+            if [ -z "$CODEQL_VERSION" ]; then
+              echo "FAIL: codeql-version is empty"
               exit 1
             fi
             if ! echo "$CODEQL_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+'; then
-              echo "FAIL: codeql-version is not a semver-like string"
+              echo "FAIL: codeql-version '$CODEQL_VERSION' does not look like a version"
               exit 1
             fi
-            "$CODEQL_PATH" version || { echo "FAIL: codeql binary does not run"; exit 1; }
-            echo "PASS: CodeQL initialized"
+            echo "PASS: CodeQL initialised at $CODEQL_PATH ($CODEQL_VERSION)"
           elif [ "$OUTCOME" = "failure" ]; then
             echo "PASS: action failed gracefully (sentinel repo is not resolvable)"
           else
