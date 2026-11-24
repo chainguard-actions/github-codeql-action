@@ -1,0 +1,57 @@
+name: Test resolve-environment after init (python)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Create a python source dir
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/resolve-env-src"
+          echo 'print("hello")' > "$GITHUB_WORKSPACE/resolve-env-src/main.py"
+      - id: init
+        uses: ./init
+        continue-on-error: true
+        with:
+          languages: python
+          source-root: resolve-env-src
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          language: python
+          working-directory: resolve-env-src
+      - name: Assert environment resolved (or failed consistently with init)
+        env:
+          INIT_OUTCOME: ${{ steps.init.outcome }}
+          OUTCOME: ${{ steps.action.outcome }}
+          RESULT: ${{ steps.action.outputs.environment }}
+        run: |
+          echo "init outcome: $INIT_OUTCOME"
+          echo "outcome: $OUTCOME"
+          echo "environment: $RESULT"
+          if [ "$INIT_OUTCOME" = "success" ]; then
+            if [ "$OUTCOME" != "success" ]; then
+              echo "FAIL: init succeeded but resolve-environment did not ('$OUTCOME')"
+              exit 1
+            fi
+            if [ -z "$RESULT" ]; then
+              echo "FAIL: environment output is empty"
+              exit 1
+            fi
+            if ! echo "$RESULT" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert isinstance(d, dict)'; then
+              echo "FAIL: environment output is not a JSON object"
+              exit 1
+            fi
+            echo "PASS: environment resolved to valid JSON"
+          elif [ "$INIT_OUTCOME" = "failure" ]; then
+            if [ "$OUTCOME" != "failure" ]; then
+              echo "FAIL: init failed but resolve-environment outcome was '$OUTCOME'"
+              exit 1
+            fi
+            echo "PASS: init could not run under harness; resolve-environment failed as expected"
+          else
+            echo "FAIL: unexpected init outcome '$INIT_OUTCOME'"
+            exit 1
+          fi

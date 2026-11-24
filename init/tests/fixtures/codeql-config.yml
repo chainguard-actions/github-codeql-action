@@ -1,0 +1,3 @@
+name: fixture-codeql-config
+paths-ignore:
+  - node_modules
