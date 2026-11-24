@@ -1,0 +1,4 @@
+name: fixture-config
+disable-default-queries: false
+paths:
+  - tests/fixtures/js-src

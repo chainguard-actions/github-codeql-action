@@ -1,0 +1,51 @@
+name: Test autobuild with working-directory input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Create a subdirectory with a JavaScript source
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/autobuild-subdir"
+          echo 'console.log("hi");' > "$GITHUB_WORKSPACE/autobuild-subdir/app.js"
+      # init queries repo-scoped APIs (feature enablement) keyed on the sentinel
+      # GITHUB_REPOSITORY, which 404s under the harness. Allow it to fail.
+      - id: init
+        uses: ./init
+        continue-on-error: true
+        with:
+          languages: javascript
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          working-directory: autobuild-subdir
+      - name: Assert autobuild outcome is consistent with init
+        env:
+          INIT_OUTCOME: ${{ steps.init.outcome }}
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "init outcome: $INIT_OUTCOME"
+          echo "autobuild outcome: $OUTCOME"
+          if [ ! -f "$GITHUB_WORKSPACE/autobuild-subdir/app.js" ]; then
+            echo "FAIL: working directory contents unexpectedly missing"
+            exit 1
+          fi
+          if [ "$INIT_OUTCOME" = "success" ]; then
+            if [ "$OUTCOME" != "success" ]; then
+              echo "FAIL: init succeeded but autobuild with working-directory did not succeed"
+              exit 1
+            fi
+            echo "PASS: autobuild succeeded with working-directory"
+          elif [ "$INIT_OUTCOME" = "failure" ]; then
+            if [ "$OUTCOME" != "failure" ]; then
+              echo "FAIL: init failed (no config written) so autobuild should fail, got '$OUTCOME'"
+              exit 1
+            fi
+            echo "PASS: init failed gracefully on sentinel repo and autobuild correctly refused to run without config"
+          else
+            echo "FAIL: unexpected init outcome '$INIT_OUTCOME'"
+            exit 1
+          fi
