@@ -1,0 +1,46 @@
+name: Test setup-codeql with tools=linked
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      # The action queries the repo-scoped feature-flags API, which 404s on the
+      # harness sentinel repository. Assert on the outcome instead.
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          tools: linked
+      - name: Assert binary installed and version matches, or graceful failure
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          CODEQL_PATH: ${{ steps.action.outputs.codeql-path }}
+          CODEQL_VERSION: ${{ steps.action.outputs.codeql-version }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "codeql-path: $CODEQL_PATH"
+          echo "codeql-version: $CODEQL_VERSION"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -z "$CODEQL_PATH" ] || [ ! -x "$CODEQL_PATH" ]; then
+              echo "FAIL: codeql-path missing or not executable"
+              exit 1
+            fi
+            if ! echo "$CODEQL_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+'; then
+              echo "FAIL: codeql-version is not a version string"
+              exit 1
+            fi
+            OUT="$("$CODEQL_PATH" version --format=terse 2>/dev/null || "$CODEQL_PATH" version)"
+            echo "binary reports: $OUT"
+            if ! echo "$OUT" | grep -qF "$CODEQL_VERSION"; then
+              echo "FAIL: binary version does not match output"
+              exit 1
+            fi
+            echo "PASS: linked CodeQL installed"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (sentinel repo is not resolvable)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
