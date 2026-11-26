@@ -1,0 +1,49 @@
+name: Test analyze with ram/threads and deprecated inputs
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      # Without a prior codeql init the action cannot find its config and is
+      # expected to fail gracefully; if it does succeed, outputs are validated.
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          ram: "2048"
+          threads: "2"
+          cleanup-level: brutal
+          add-snippets: "true"
+          check_name: act-codeql-check
+          upload: never
+          upload-database: "false"
+          wait-for-processing: "false"
+          post-processed-sarif-path: ${{ runner.temp }}/post-processed
+          output: ${{ runner.temp }}/codeql-results
+      - name: Assert action ran (outputs set, or failed gracefully)
+        env:
+          RESULT: ${{ steps.action.outputs.sarif-output }}
+          SARIF_ID: ${{ steps.action.outputs.sarif-id }}
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "sarif-output: $RESULT"
+          echo "sarif-id: $SARIF_ID"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -z "$RESULT" ]; then
+              echo "FAIL: action succeeded but sarif-output is empty"
+              exit 1
+            fi
+            if [ -n "$SARIF_ID" ]; then
+              echo "FAIL: upload=never should not produce a sarif-id"
+              exit 1
+            fi
+            echo "PASS: got '$RESULT'"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (no init performed)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

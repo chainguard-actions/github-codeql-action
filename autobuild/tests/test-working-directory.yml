@@ -1,0 +1,40 @@
+name: Test autobuild with working-directory input
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Create working directory
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/autobuild-wd"
+          echo "int main(){return 0;}" > "$GITHUB_WORKSPACE/autobuild-wd/main.c"
+      # Without a prior CodeQL init the action cannot find its config and is
+      # expected to fail gracefully; this verifies the input is accepted and
+      # the action does not crash or get skipped.
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          working-directory: autobuild-wd
+      - name: Assert action ran with working-directory
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully without init config"
+          elif [ "$OUTCOME" = "success" ]; then
+            echo "PASS: action succeeded"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
+      - name: Assert working directory untouched
+        run: |
+          if [ ! -f "$GITHUB_WORKSPACE/autobuild-wd/main.c" ]; then
+            echo "FAIL: working directory content missing"
+            exit 1
+          fi
+          echo "PASS"

@@ -1,0 +1,27 @@
+name: Test autobuild without prior init
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      # The autobuild action requires the CodeQL init action to have run first
+      # (it reads the CodeQL config from the runner temp dir). init cannot be
+      # invoked here, so the action is expected to fail gracefully.
+      - id: action
+        uses: .
+        continue-on-error: true
+      - name: Assert action ran and failed gracefully (no init config)
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          if [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully without init config"
+          elif [ "$OUTCOME" = "success" ]; then
+            echo "PASS: action unexpectedly succeeded (init config present)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

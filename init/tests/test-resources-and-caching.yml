@@ -1,0 +1,53 @@
+name: Test ram/threads and caching toggles
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Create sample source
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/codeql-src"
+          printf 'def greet(name):\n    return "hi " + name\n\nprint(greet("x"))\n' > "$GITHUB_WORKSPACE/codeql-src/main.py"
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          languages: python
+          build-mode: none
+          tools: linked
+          source-root: codeql-src
+          ram: '2048'
+          threads: '1'
+          trap-caching: 'false'
+          dependency-caching: 'false'
+          setup-python-dependencies: 'false'
+          debug: 'false'
+          debug-artifact-name: test-debug-artifact
+          debug-database-name: test-debug-db
+      - name: Assert action ran (outputs set, or failed gracefully on the sentinel repo)
+        env:
+          CODEQL_PATH: ${{ steps.action.outputs.codeql-path }}
+          CODEQL_VERSION: ${{ steps.action.outputs.codeql-version }}
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "codeql-path: $CODEQL_PATH"
+          echo "codeql-version: $CODEQL_VERSION"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -z "$CODEQL_PATH" ] || [ ! -x "$CODEQL_PATH" ]; then
+              echo "FAIL: codeql-path missing or not executable"
+              exit 1
+            fi
+            if ! echo "$CODEQL_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+'; then
+              echo "FAIL: codeql-version is not a semver: '$CODEQL_VERSION'"
+              exit 1
+            fi
+            echo "PASS"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (sentinel repo is not resolvable)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi

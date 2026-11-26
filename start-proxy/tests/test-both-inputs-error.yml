@@ -1,0 +1,45 @@
+name: Test start proxy prefers registries_credentials when both credential inputs are set
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Encode credentials
+        id: creds
+        run: |
+          B64=$(printf '%s' '[{"type":"maven_repository","url":"https://repo1.maven.org/maven2/","username":"u","password":"p"}]' | base64 -w0)
+          echo "b64=$B64" >> "$GITHUB_OUTPUT"
+      - id: action
+        uses: .
+        with:
+          language: java
+          registry_secrets: '[{"type":"maven_repository","url":"https://repo.maven.apache.org/maven2/","username":"u","password":"p"}]'
+          registries_credentials: ${{ steps.creds.outputs.b64 }}
+      - name: Assert registries_credentials took precedence
+        env:
+          URLS: ${{ steps.action.outputs.proxy_urls }}
+          HOST: ${{ steps.action.outputs.proxy_host }}
+          PORT: ${{ steps.action.outputs.proxy_port }}
+        run: |
+          echo "proxy_urls: $URLS"
+          echo "proxy_host: $HOST"
+          echo "proxy_port: $PORT"
+          if [ -z "$HOST" ]; then
+            echo "FAIL: proxy_host empty"
+            exit 1
+          fi
+          if ! echo "$PORT" | grep -qE '^[0-9]+$'; then
+            echo "FAIL: proxy_port not numeric"
+            exit 1
+          fi
+          if ! echo "$URLS" | grep -q 'repo1.maven.org'; then
+            echo "FAIL: expected registries_credentials URL in proxy_urls"
+            exit 1
+          fi
+          if echo "$URLS" | grep -q 'repo.maven.apache.org'; then
+            echo "FAIL: registry_secrets URL should not be used when registries_credentials is set"
+            exit 1
+          fi
+          echo "PASS"

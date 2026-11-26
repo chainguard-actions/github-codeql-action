@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": {
+        "driver": {
+          "name": "ActTestTool",
+          "version": "1.0.0",
+          "informationUri": "https://example.com/act-test-tool",
+          "rules": [
+            {
+              "id": "ACT001",
+              "name": "ActTestRule",
+              "shortDescription": { "text": "Act test rule" },
+              "fullDescription": { "text": "A rule used for testing the upload-sarif action." },
+              "defaultConfiguration": { "level": "warning" }
+            }
+          ]
+        }
+      },
+      "results": [
+        {
+          "ruleId": "ACT001",
+          "ruleIndex": 0,
+          "level": "warning",
+          "message": { "text": "Test finding" },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "tests/fixtures/sarif/basic.sarif" },
+                "region": { "startLine": 1, "startColumn": 1 }
+              }
+            }
+          ],
+          "partialFingerprints": { "primaryLocationLineHash": "abc123:1" }
+        }
+      ]
+    }
+  ]
+}
