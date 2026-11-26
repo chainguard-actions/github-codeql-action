@@ -1,0 +1,32 @@
+name: Test stub action failure gates dependent steps
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+      - id: after
+        if: steps.action.outcome == 'success'
+        run: echo "reached=yes" >> "$GITHUB_OUTPUT"
+      - name: Assert stub failed and gated step never ran
+        env:
+          OUTCOME: ${{ steps.action.outcome }}
+          AFTER_OUTCOME: ${{ steps.after.outcome }}
+          REACHED: ${{ steps.after.outputs.reached }}
+        run: |
+          echo "action outcome: $OUTCOME"
+          echo "after outcome: $AFTER_OUTCOME"
+          echo "reached: $REACHED"
+          if [ "$OUTCOME" != "failure" ]; then
+            echo "FAIL: expected stub action outcome 'failure'"
+            exit 1
+          fi
+          if [ "$REACHED" = "yes" ] || [ "$AFTER_OUTCOME" = "success" ]; then
+            echo "FAIL: step gated on stub success should not have run"
+            exit 1
+          fi
+          echo "PASS"

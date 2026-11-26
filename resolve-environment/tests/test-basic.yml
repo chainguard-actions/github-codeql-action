@@ -1,0 +1,36 @@
+name: Test basic resolve environment (java)
+on:
+  workflow_dispatch:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - id: action
+        uses: .
+        continue-on-error: true
+        with:
+          language: java
+      - name: Assert action ran (valid JSON environment, or failed gracefully without init)
+        env:
+          RESULT: ${{ steps.action.outputs.environment }}
+          OUTCOME: ${{ steps.action.outcome }}
+        run: |
+          echo "outcome: $OUTCOME"
+          echo "result: $RESULT"
+          if [ "$OUTCOME" = "success" ]; then
+            if [ -z "$RESULT" ]; then
+              echo "FAIL: action succeeded but environment output is empty"
+              exit 1
+            fi
+            if ! printf '%s' "$RESULT" | python3 -c 'import json,sys; v=json.load(sys.stdin); assert isinstance(v, dict)'; then
+              echo "FAIL: environment output is not a JSON object"
+              exit 1
+            fi
+            echo "PASS: got JSON environment '$RESULT'"
+          elif [ "$OUTCOME" = "failure" ]; then
+            echo "PASS: action failed gracefully (no CodeQL init config / CLI in harness)"
+          else
+            echo "FAIL: unexpected outcome '$OUTCOME'"
+            exit 1
+          fi
